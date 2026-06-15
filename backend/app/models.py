@@ -71,6 +71,10 @@ class PictogramRequest(BaseModel):
     hazard_type: str = Field(min_length=1, max_length=80, pattern=r"^[a-z0-9_]+$")
     language: SupportedLanguage
     action_steps: list[str] = Field(min_length=1, max_length=5)
+    detected_text: str = Field(default="unknown", min_length=1, max_length=1000)
+    plain_explanation: str = Field(default="", max_length=500)
+    risk_reason: str = Field(default="", max_length=500)
+    pictogram_prompt: str = Field(default="", max_length=1000)
 
 
 class PictogramResponse(BaseModel):

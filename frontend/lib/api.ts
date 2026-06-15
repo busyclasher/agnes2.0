@@ -74,6 +74,10 @@ export async function generatePictogram(input: {
   hazardType: string;
   language: SupportedLanguage;
   actionSteps: string[];
+  detectedText: string;
+  plainExplanation: string;
+  riskReason: string;
+  pictogramPrompt: string;
 }): Promise<PictogramResponse> {
   return parseResponse<PictogramResponse>(
     await fetch(`${BACKEND_URL}/api/generate-pictogram-card`, {
@@ -85,6 +89,10 @@ export async function generatePictogram(input: {
         hazard_type: input.hazardType,
         language: input.language,
         action_steps: input.actionSteps,
+        detected_text: input.detectedText,
+        plain_explanation: input.plainExplanation,
+        risk_reason: input.riskReason,
+        pictogram_prompt: input.pictogramPrompt,
       }),
     }),
   );
@@ -210,5 +218,7 @@ export async function generateAudioGuidance(input: {
 }
 
 export function assetUrl(path: string): string {
-  return path.startsWith("http") ? path : `${BACKEND_URL}${path}`;
+  return path.startsWith("http") || path.startsWith("data:")
+    ? path
+    : `${BACKEND_URL}${path}`;
 }

@@ -22,6 +22,8 @@ class Settings:
     agnes_api_key: str | None = os.getenv("AGNES_API_KEY")
     agnes_base_url: str | None = os.getenv("AGNES_BASE_URL")
     agnes_model: str = os.getenv("AGNES_MODEL", "agnes-2.0-flash")
+    agnes_image_model: str = os.getenv("AGNES_IMAGE_MODEL", "agnes-image-2.1-flash")
+    agnes_image_size: str = os.getenv("AGNES_IMAGE_SIZE", "1024x1024")
     agnes_timeout_seconds: float = float(os.getenv("AGNES_TIMEOUT_SECONDS", "30"))
     elevenlabs_api_key: str | None = os.getenv("ELEVENLABS_API_KEY")
     elevenlabs_base_url: str = os.getenv(

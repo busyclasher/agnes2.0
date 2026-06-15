@@ -17,6 +17,9 @@ from app.models import (
     BriefingResponse,
     IncidentReportRequest,
     IncidentReportResponse,
+    PictogramRequest,
+    PictogramResponse,
+    RiskLevel,
     ScanResult,
     SourceState,
     SupportedLanguage,
@@ -46,6 +49,10 @@ class AgnesGateway(ABC):
 
     @abstractmethod
     async def briefing(self, request: BriefingRequest) -> BriefingResponse:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def pictogram(self, request: PictogramRequest) -> PictogramResponse:
         raise NotImplementedError
 
 
@@ -171,6 +178,9 @@ class FixtureAgnesGateway(AgnesGateway):
             source_state=self.source_state,
         )
 
+    async def pictogram(self, request: PictogramRequest) -> PictogramResponse:
+        return _static_pictogram_response(request, self.source_state)
+
 
 class LiveAgnesGateway(AgnesGateway):
     def __init__(
@@ -226,13 +236,14 @@ determination.
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": prompt},
                         {"type": "image_url", "image_url": {"url": image_url}},
+                        {"type": "text", "text": prompt},
                     ],
                 },
             ],
             max_tokens=1800,
         )
+        payload = _normalise_scan_payload(payload)
         payload.update(
             {
                 "scan_id": f"scan_{image.digest[:12]}",
@@ -341,6 +352,80 @@ prompts must describe a simple, high-contrast worker briefing.
         except ValidationError:
             raise _invalid_ai_response() from None
 
+    async def pictogram(self, request: PictogramRequest) -> PictogramResponse:
+        if not self.config.agnes_api_key or not self.config.agnes_base_url:
+            raise APIError(
+                "AGNES_NOT_CONFIGURED",
+                "Live Agnes image generation requires AGNES_API_KEY and AGNES_BASE_URL on the backend.",
+                status_code=503,
+                recoverable=True,
+            )
+
+        prompt = _pictogram_prompt(request)
+        url = self.config.agnes_base_url.rstrip("/") + "/images/generations"
+        try:
+            async with httpx.AsyncClient(
+                timeout=self.config.agnes_timeout_seconds,
+                transport=self.transport,
+            ) as client:
+                response = await client.post(
+                    url,
+                    headers={
+                        "Authorization": f"Bearer {self.config.agnes_api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": self.config.agnes_image_model,
+                        "prompt": prompt,
+                        "size": self.config.agnes_image_size,
+                        "n": 1,
+                    },
+                )
+        except httpx.TimeoutException:
+            raise APIError(
+                "AGNES_TIMEOUT",
+                "Agnes took too long to create the pictogram. The text guidance is still available.",
+                status_code=504,
+                recoverable=True,
+            ) from None
+        except httpx.RequestError:
+            raise APIError(
+                "AGNES_API_UNAVAILABLE",
+                "Agnes image generation could not be reached. The text guidance is still available.",
+                status_code=503,
+                recoverable=True,
+            ) from None
+
+        if response.status_code >= 400:
+            raise APIError(
+                "AGNES_API_ERROR",
+                "Agnes could not create the pictogram. The text guidance is still available.",
+                status_code=502,
+                recoverable=True,
+            )
+
+        try:
+            envelope = response.json()
+            image = envelope["data"][0]
+            image_url = image.get("url")
+            if isinstance(image_url, str) and image_url:
+                return PictogramResponse(
+                    image_url=image_url,
+                    alt_text=_pictogram_alt_text(request),
+                    source_state=SourceState.LIVE,
+                )
+            b64_json = image.get("b64_json")
+            if isinstance(b64_json, str) and b64_json:
+                return PictogramResponse(
+                    image_url=f"data:image/png;base64,{b64_json}",
+                    alt_text=_pictogram_alt_text(request),
+                    source_state=SourceState.LIVE,
+                )
+        except (KeyError, IndexError, TypeError, ValueError):
+            pass
+
+        raise _invalid_ai_response()
+
     async def _complete_json(
         self,
         messages: list[dict[str, Any]],
@@ -422,7 +507,12 @@ class FallbackAgnesGateway(AgnesGateway):
     ) -> ScanResult:
         try:
             return await self.primary.scan(image, language, site_context)
-        except APIError:
+        except APIError as error:
+            if (
+                isinstance(self.fallback, FixtureAgnesGateway)
+                and image.digest not in self.fallback.sample_hashes
+            ):
+                raise error
             return await self.fallback.scan(image, language, site_context)
 
     async def incident(
@@ -439,17 +529,19 @@ class FallbackAgnesGateway(AgnesGateway):
         except APIError:
             return await self.fallback.briefing(request)
 
+    async def pictogram(self, request: PictogramRequest) -> PictogramResponse:
+        try:
+            return await self.primary.pictogram(request)
+        except APIError:
+            return await self.fallback.pictogram(request)
+
 
 def build_gateway(config: Settings) -> AgnesGateway:
     if config.agnes_mode == "live":
-        if config.use_sample_fallback and (
-            not config.agnes_api_key or not config.agnes_base_url
-        ):
-            return FixtureAgnesGateway(config, SourceState.LIVE)
         if config.use_sample_fallback:
             return FallbackAgnesGateway(
                 LiveAgnesGateway(config),
-                FixtureAgnesGateway(config, SourceState.LIVE),
+                FixtureAgnesGateway(config, SourceState.FALLBACK),
             )
         return LiveAgnesGateway(config)
     return FixtureAgnesGateway(config)
@@ -462,6 +554,79 @@ def _invalid_ai_response() -> APIError:
         status_code=502,
         recoverable=True,
     )
+
+
+def _normalise_scan_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(payload)
+    risk_map = {
+        "high": ("red", "Danger"),
+        "red": ("red", "Danger"),
+        "danger": ("red", "Danger"),
+        "medium": ("yellow", "Caution"),
+        "yellow": ("yellow", "Caution"),
+        "caution": ("yellow", "Caution"),
+        "low": ("green", "Safe"),
+        "green": ("green", "Safe"),
+        "safe": ("green", "Safe"),
+        "information": ("green", "Safe"),
+        "unknown": ("unknown", "Unclear"),
+        "unclear": ("unknown", "Unclear"),
+    }
+    risk_raw = str(normalized.get("risk_level", "unknown")).lower()
+    risk_level, risk_label = risk_map.get(risk_raw, ("unknown", "Unclear"))
+    normalized["risk_level"] = risk_level
+    normalized.setdefault("risk_label", risk_label)
+    return normalized
+
+
+def _static_pictogram_response(
+    request: PictogramRequest, source_state: SourceState
+) -> PictogramResponse:
+    from urllib.parse import quote
+
+    query = quote(request.language.value)
+    return PictogramResponse(
+        image_url=(
+            f"/api/pictogram-assets/{request.risk_level.value}/"
+            f"{request.hazard_type}.svg?language={query}"
+        ),
+        alt_text=_pictogram_alt_text(request),
+        source_state=source_state,
+    )
+
+
+def _pictogram_prompt(request: PictogramRequest) -> str:
+    risk_colours = {
+        RiskLevel.RED: "red danger risk level with urgent warning contrast",
+        RiskLevel.YELLOW: "yellow caution risk level with clear warning contrast",
+        RiskLevel.GREEN: "green information risk level with calm safety contrast",
+        RiskLevel.UNKNOWN: "grey unclear risk level with retake-photo visual cue",
+    }
+    actions = "; ".join(request.action_steps)
+    detected = request.detected_text if request.detected_text != "unknown" else "unreadable"
+    return f"""
+Create one worker safety pictogram based on this live SafePoint scan.
+
+Risk level: {request.risk_level.value.upper()} ({risk_colours[request.risk_level]}).
+Hazard type: {request.hazard_type.replace("_", " ")}.
+Detected sign text: {detected}.
+Plain explanation: {request.plain_explanation or "unknown"}.
+Risk reason: {request.risk_reason or "unknown"}.
+Immediate actions: {actions}.
+Pictogram concept: {request.pictogram_prompt or "simple safety pictogram"}.
+
+Style: black and yellow safety pictogram style, clean vector, ISO 7010 inspired,
+high contrast, simple shapes, no text in image, no logos, no real people, no
+identifiable faces, no gore. Show the danger itself and include a visible risk
+level treatment through colour, shape, and warning symbols. The native-language
+caption will be rendered by the app UI, not inside the image.
+""".strip()
+
+
+def _pictogram_alt_text(request: PictogramRequest) -> str:
+    risk = request.risk_level.value.title()
+    hazard = request.hazard_type.replace("_", " ")
+    return f"{risk} safety pictogram for {hazard} based on the scanned warning."
 
 
 def _incident_severity(request: IncidentReportRequest) -> str:

@@ -13,6 +13,7 @@ from app.errors import APIError
 from app.models import (
     BriefingRequest,
     IncidentReportRequest,
+    PictogramRequest,
     SourceState,
     SupportedLanguage,
 )
@@ -33,7 +34,7 @@ def test_live_scan_uses_multimodal_contract() -> None:
         body = json.loads(request.content)
         assert body["model"] == "agnes-2.0-flash"
         assert body["response_format"] == {"type": "json_object"}
-        image_url = body["messages"][1]["content"][1]["image_url"]["url"]
+        image_url = body["messages"][1]["content"][0]["image_url"]["url"]
         assert image_url.startswith("data:image/jpeg;base64,")
         content = {
             "detected_text": "DANGER OPEN EDGE",
@@ -119,6 +120,53 @@ def test_live_scan_requires_backend_credentials() -> None:
         )
 
     assert caught.value.code == "AGNES_NOT_CONFIGURED"
+
+
+def test_live_pictogram_uses_agnes_image_generation_contract() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/v1/images/generations"
+        assert request.headers["authorization"] == "Bearer test-key"
+        body = json.loads(request.content)
+        assert body["model"] == "agnes-image-2.1-flash"
+        assert body["size"] == "1024x1024"
+        assert body["n"] == 1
+        assert "DANGER KEEP OUT" in body["prompt"]
+        assert "Risk level: RED" in body["prompt"]
+        assert "no text in image" in body["prompt"]
+        return httpx.Response(
+            200,
+            json={"data": [{"url": "https://agnes.test/generated-danger.png"}]},
+        )
+
+    gateway = LiveAgnesGateway(
+        Settings(
+            agnes_mode="live",
+            agnes_api_key="test-key",
+            agnes_base_url="https://agnes.test/v1",
+            agnes_image_model="agnes-image-2.1-flash",
+            agnes_image_size="1024x1024",
+        ),
+        httpx.MockTransport(handler),
+    )
+    result = asyncio.run(
+        gateway.pictogram(
+            PictogramRequest(
+                scan_id="scan_demo",
+                risk_level="red",
+                hazard_type="restricted_area",
+                language=SupportedLanguage.TAMIL,
+                action_steps=["Do not enter this area."],
+                detected_text="DANGER KEEP OUT",
+                plain_explanation="This appears to be a high-risk keep-out warning.",
+                risk_reason="A red danger sign says keep out.",
+                pictogram_prompt="Show a restricted area danger warning.",
+            )
+        )
+    )
+
+    assert result.image_url == "https://agnes.test/generated-danger.png"
+    assert result.source_state == SourceState.LIVE
+    assert "restricted area" in result.alt_text
 
 
 def test_live_incident_adds_deterministic_mom_workflow() -> None:

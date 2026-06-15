@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import html
-from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,7 +20,6 @@ from app.models import (
     PictogramResponse,
     RiskLevel,
     ScanResult,
-    SourceState,
     SupportedLanguage,
     TranscriptResponse,
 )
@@ -44,6 +42,7 @@ app.add_middleware(
 )
 app.add_exception_handler(APIError, api_error_handler)
 
+_gateway = build_gateway(settings)
 _speech_gateway = ElevenLabsGateway(settings)
 
 
@@ -118,19 +117,9 @@ async def generate_audio_guidance(
 @app.post("/api/generate-pictogram-card", response_model=PictogramResponse)
 async def generate_pictogram(
     request: PictogramRequest,
+    gateway: AgnesGateway = Depends(get_gateway),
 ) -> PictogramResponse:
-    query = quote(request.language.value)
-    return PictogramResponse(
-        image_url=(
-            f"/api/pictogram-assets/{request.risk_level.value}/"
-            f"{request.hazard_type}.svg?language={query}"
-        ),
-        alt_text=(
-            f"{request.risk_level.value.title()} safety card for "
-            f"{request.hazard_type.replace('_', ' ')}."
-        ),
-        source_state=SourceState.SAMPLE,
-    )
+    return await gateway.pictogram(request)
 
 
 @app.get("/api/pictogram-assets/{risk_level}/{hazard_type}.svg")

@@ -103,6 +103,10 @@ export function SafetyApp() {
           hazardType: scan.hazard_type,
           language: scan.language,
           actionSteps: scan.action_steps.map((step) => step.label),
+          detectedText: scan.detected_text,
+          plainExplanation: scan.plain_explanation,
+          riskReason: scan.risk_reason,
+          pictogramPrompt: scan.pictogram_prompt,
         }),
       );
     } catch (caught) {
