@@ -10,6 +10,8 @@ from fastapi.responses import Response
 from app.config import Settings, settings
 from app.errors import APIError, api_error_handler
 from app.models import (
+    BriefingRequest,
+    BriefingResponse,
     HealthResponse,
     IncidentReportRequest,
     IncidentReportResponse,
@@ -70,9 +72,10 @@ async def scan_safety_image(
     gateway: AgnesGateway = Depends(get_gateway),
 ) -> ScanResult:
     del mode
+    content_type = image.content_type
     raw = await image.read(config.max_image_bytes + 1)
     await image.close()
-    processed = process_image(raw, image.content_type, config)
+    processed = process_image(raw, content_type, config)
     raw = b""
     result = await gateway.scan(processed, language, site_context)
     return normalize_scan(result, config)
@@ -135,3 +138,11 @@ async def generate_incident_report(
     gateway: AgnesGateway = Depends(get_gateway),
 ) -> IncidentReportResponse:
     return await gateway.incident(request)
+
+
+@app.post("/api/generate-briefing", response_model=BriefingResponse)
+async def generate_briefing(
+    request: BriefingRequest,
+    gateway: AgnesGateway = Depends(get_gateway),
+) -> BriefingResponse:
+    return await gateway.briefing(request)

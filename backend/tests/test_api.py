@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from io import BytesIO
 from pathlib import Path
@@ -9,6 +10,10 @@ from PIL import Image
 
 from app.config import REPO_ROOT
 from app.main import app
+from app.config import Settings
+from app.models import SourceState, SupportedLanguage
+from app.services.agnes import build_gateway
+from app.services.image_processing import process_image
 
 client = TestClient(app)
 SAMPLES = REPO_ROOT / "data" / "sample-signs"
@@ -101,3 +106,38 @@ def test_pictogram_is_independent() -> None:
     )
     assert response.status_code == 200
     assert response.json()["image_url"].endswith("language=Hindi")
+
+
+def test_live_mode_falls_back_only_for_known_samples() -> None:
+    config = Settings(
+        agnes_mode="live",
+        use_sample_fallback=True,
+        sample_sign_dir=SAMPLES,
+    )
+    image = process_image(
+        (SAMPLES / "fall-hazard.png").read_bytes(),
+        "image/png",
+        config,
+    )
+    result = asyncio.run(
+        build_gateway(config).scan(image, SupportedLanguage.HINDI, "construction")
+    )
+    assert result.source_state == SourceState.FALLBACK
+
+
+def test_daily_briefing_matches_contract() -> None:
+    response = client.post(
+        "/api/generate-briefing",
+        json={
+            "language": "Hindi",
+            "site_zone": "Level 3",
+            "today_tasks": ["open-edge work", "scaffold inspection"],
+            "hazards": ["fall hazard", "moving materials"],
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["source_state"] == "sample"
+    assert "Level 3" in payload["briefing_text"]
+    assert payload["audio_text"] == payload["briefing_text"]
+    assert "30-second" in payload["video_prompt"]

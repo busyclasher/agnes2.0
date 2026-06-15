@@ -98,6 +98,23 @@ class IncidentReportResponse(BaseModel):
     source_state: SourceState
 
 
+class BriefingRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    language: SupportedLanguage
+    site_zone: str = Field(min_length=1, max_length=160)
+    today_tasks: list[str] = Field(min_length=1, max_length=8)
+    hazards: list[str] = Field(min_length=1, max_length=8)
+
+
+class BriefingResponse(BaseModel):
+    briefing_text: str
+    audio_text: str
+    video_prompt: str
+    pictogram_prompt: str
+    source_state: SourceState
+
+
 class HealthResponse(BaseModel):
     status: Literal["ok"]
     environment: str

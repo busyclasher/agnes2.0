@@ -7,6 +7,8 @@ from pathlib import Path
 from app.config import Settings
 from app.errors import APIError
 from app.models import (
+    BriefingRequest,
+    BriefingResponse,
     IncidentReportRequest,
     IncidentReportResponse,
     ScanResult,
@@ -36,10 +38,19 @@ class AgnesGateway(ABC):
     ) -> IncidentReportResponse:
         raise NotImplementedError
 
+    @abstractmethod
+    async def briefing(self, request: BriefingRequest) -> BriefingResponse:
+        raise NotImplementedError
+
 
 class FixtureAgnesGateway(AgnesGateway):
-    def __init__(self, config: Settings) -> None:
+    def __init__(
+        self,
+        config: Settings,
+        source_state: SourceState = SourceState.SAMPLE,
+    ) -> None:
         self.config = config
+        self.source_state = source_state
         self.sample_hashes = _load_sample_hashes(config.sample_sign_dir)
 
     async def scan(
@@ -59,7 +70,7 @@ class FixtureAgnesGateway(AgnesGateway):
         return ScanResult(
             scan_id=f"scan_{image.digest[:12]}",
             language=language,
-            source_state=SourceState.SAMPLE,
+            source_state=self.source_state,
             **payload,
         )
 
@@ -93,7 +104,43 @@ class FixtureAgnesGateway(AgnesGateway):
                 "Notify the supervisor, secure the area if safe to do so, and confirm the report before sharing."
             ),
             requires_confirmation=True,
-            source_state=SourceState.SAMPLE,
+            source_state=self.source_state,
+        )
+
+    async def briefing(self, request: BriefingRequest) -> BriefingResponse:
+        tasks = ", ".join(request.today_tasks)
+        hazards = ", ".join(request.hazards)
+        templates = {
+            SupportedLanguage.BENGALI: (
+                f"আজ {request.site_zone} এলাকায় কাজ হবে: {tasks}। "
+                f"প্রধান ঝুঁকি: {hazards}। কাজ শুরুর আগে PPE পরীক্ষা করুন, "
+                "নিরাপদ কাজের পদ্ধতি অনুসরণ করুন এবং কোনো কিছু অস্পষ্ট হলে সুপারভাইজারকে জিজ্ঞাসা করুন।"
+            ),
+            SupportedLanguage.TAMIL: (
+                f"இன்று {request.site_zone} பகுதியில் செய்யும் பணிகள்: {tasks}. "
+                f"முக்கிய அபாயங்கள்: {hazards}. வேலை தொடங்கும் முன் PPE-ஐ சரிபார்க்கவும், "
+                "பாதுகாப்பான வேலை முறையைப் பின்பற்றவும், தெளிவில்லையெனில் மேற்பார்வையாளரிடம் கேட்கவும்."
+            ),
+            SupportedLanguage.HINDI: (
+                f"आज {request.site_zone} क्षेत्र में कार्य हैं: {tasks}। "
+                f"मुख्य खतरे: {hazards}। काम शुरू करने से पहले PPE जांचें, "
+                "सुरक्षित कार्य प्रक्रिया का पालन करें और संदेह होने पर सुपरवाइजर से पूछें।"
+            ),
+        }
+        briefing_text = templates[request.language]
+        return BriefingResponse(
+            briefing_text=briefing_text,
+            audio_text=briefing_text,
+            video_prompt=(
+                f"Create a calm 30-second construction safety briefing for "
+                f"{request.site_zone}. Show these tasks: {tasks}. Show these hazards: "
+                f"{hazards}. Use culturally neutral workers, clear PPE, and no unsafe acts."
+            ),
+            pictogram_prompt=(
+                f"Create a simple high-contrast briefing card for {request.site_zone} "
+                f"showing {hazards}, required PPE, and a supervisor-check symbol."
+            ),
+            source_state=self.source_state,
         )
 
 
@@ -123,9 +170,51 @@ class LiveAgnesGateway(AgnesGateway):
             recoverable=True,
         )
 
+    async def briefing(self, request: BriefingRequest) -> BriefingResponse:
+        del request
+        raise APIError(
+            "AGNES_PROTOCOL_NOT_CONFIGURED",
+            "The Agnes integration boundary is ready, but private API protocol details have not been configured.",
+            status_code=503,
+            recoverable=True,
+        )
+
+
+class FallbackAgnesGateway(AgnesGateway):
+    def __init__(self, primary: AgnesGateway, fallback: AgnesGateway) -> None:
+        self.primary = primary
+        self.fallback = fallback
+
+    async def scan(
+        self, image: ProcessedImage, language: SupportedLanguage, site_context: str
+    ) -> ScanResult:
+        try:
+            return await self.primary.scan(image, language, site_context)
+        except APIError:
+            return await self.fallback.scan(image, language, site_context)
+
+    async def incident(
+        self, request: IncidentReportRequest
+    ) -> IncidentReportResponse:
+        try:
+            return await self.primary.incident(request)
+        except APIError:
+            return await self.fallback.incident(request)
+
+    async def briefing(self, request: BriefingRequest) -> BriefingResponse:
+        try:
+            return await self.primary.briefing(request)
+        except APIError:
+            return await self.fallback.briefing(request)
+
 
 def build_gateway(config: Settings) -> AgnesGateway:
     if config.agnes_mode == "live":
+        if config.use_sample_fallback:
+            return FallbackAgnesGateway(
+                LiveAgnesGateway(config),
+                FixtureAgnesGateway(config, SourceState.FALLBACK),
+            )
         return LiveAgnesGateway(config)
     return FixtureAgnesGateway(config)
 

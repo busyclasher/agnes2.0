@@ -1,5 +1,6 @@
 import type {
   ApiErrorPayload,
+  DailyBriefing,
   IncidentReport,
   PictogramResponse,
   RiskLevel,
@@ -85,6 +86,26 @@ export async function generateIncidentReport(input: {
         language: input.language,
         worker_statement: input.workerStatement,
         location: input.location,
+      }),
+    }),
+  );
+}
+
+export async function generateDailyBriefing(input: {
+  language: SupportedLanguage;
+  siteZone: string;
+  todayTasks: string[];
+  hazards: string[];
+}): Promise<DailyBriefing> {
+  return parseResponse<DailyBriefing>(
+    await fetch(`${BACKEND_URL}/api/generate-briefing`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        language: input.language,
+        site_zone: input.siteZone,
+        today_tasks: input.todayTasks,
+        hazards: input.hazards,
       }),
     }),
   );

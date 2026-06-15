@@ -13,6 +13,8 @@ import type {
   SupportedLanguage,
 } from "@/lib/types";
 import {IncidentReportForm} from "@/components/IncidentReportForm";
+import {CoreFeatures} from "@/components/CoreFeatures";
+import {DailyBriefingForm} from "@/components/DailyBriefingForm";
 import {ResultCard} from "@/components/ResultCard";
 import {ScanProgress} from "@/components/ScanProgress";
 
@@ -42,6 +44,7 @@ export function SafetyApp() {
   const [pictogramError, setPictogramError] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [reportOpen, setReportOpen] = useState(false);
+  const [briefingOpen, setBriefingOpen] = useState(false);
   const cameraInput = useRef<HTMLInputElement>(null);
   const uploadInput = useRef<HTMLInputElement>(null);
 
@@ -243,32 +246,51 @@ export function SafetyApp() {
         )}
 
         {scanState === "idle" && (
-          <section className="samples-section">
-            <div className="section-heading">
-              <div>
-                <p className="eyebrow">Reliable demo</p>
-                <h2>Try a sample sign</h2>
+          <>
+            <section className="quick-tools" aria-label="Worker safety tools">
+              <button type="button" onClick={() => setBriefingOpen(true)}>
+                <span aria-hidden="true">▶</span>
+                <span>
+                  <strong>Today’s safety briefing</strong>
+                  <small>Generate site-specific audio guidance</small>
+                </span>
+              </button>
+              <button type="button" onClick={() => setReportOpen(true)}>
+                <span aria-hidden="true">!</span>
+                <span>
+                  <strong>Report an incident</strong>
+                  <small>Create a draft before sharing</small>
+                </span>
+              </button>
+            </section>
+            <section className="samples-section">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Reliable demo</p>
+                  <h2>Try a sample sign</h2>
+                </div>
+                <span>3 examples</span>
               </div>
-              <span>3 examples</span>
-            </div>
-            <div className="sample-grid">
-              {SAMPLES.map((sample) => (
-                <button
-                  className="sample-card"
-                  type="button"
-                  key={sample.file}
-                  onClick={() => chooseSample(sample.file)}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/samples/${sample.file}`} alt="" />
-                  <span>
-                    <strong>{sample.label}</strong>
-                    <small>{sample.detail}</small>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </section>
+              <div className="sample-grid">
+                {SAMPLES.map((sample) => (
+                  <button
+                    className="sample-card"
+                    type="button"
+                    key={sample.file}
+                    onClick={() => chooseSample(sample.file)}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`/samples/${sample.file}`} alt="" />
+                    <span>
+                      <strong>{sample.label}</strong>
+                      <small>{sample.detail}</small>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+            <CoreFeatures />
+          </>
         )}
 
         {scanState === "scanning" && <ScanProgress />}
@@ -296,6 +318,12 @@ export function SafetyApp() {
         <IncidentReportForm
           language={language}
           onClose={() => setReportOpen(false)}
+        />
+      )}
+      {briefingOpen && (
+        <DailyBriefingForm
+          language={language}
+          onClose={() => setBriefingOpen(false)}
         />
       )}
     </main>

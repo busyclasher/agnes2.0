@@ -49,6 +49,14 @@ export type IncidentReport = {
   source_state: SourceState;
 };
 
+export type DailyBriefing = {
+  briefing_text: string;
+  audio_text: string;
+  video_prompt: string;
+  pictogram_prompt: string;
+  source_state: SourceState;
+};
+
 export type ApiErrorPayload = {
   error: {
     code: string;

@@ -12,13 +12,25 @@ private Agnes API is unavailable.
 ### Docker
 
 ```bash
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env.local
+cp .env.example .env
 docker compose up --build
 ```
 
 Open `http://localhost:3000`. The API health endpoint is
 `http://localhost:8000/health`.
+
+If port `3000` is already used by `npm run dev`, set this in `.env`:
+
+```bash
+FRONTEND_PORT=3001
+FRONTEND_ORIGINS=http://localhost:3001
+```
+
+Then open `http://localhost:3001`.
+
+Keep `AGNES_MODE=fixture` for the working demo. `AGNES_MODE=live` selects the
+integration boundary, but live requests still require the private Agnes
+protocol implementation.
 
 ### Local Development
 

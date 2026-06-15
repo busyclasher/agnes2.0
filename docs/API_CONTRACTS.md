@@ -43,20 +43,21 @@ Purpose: Analyse a scanned safety sign, label, notice, or equipment warning.
 
 ### Request
 
-```json
-{
-  "image": "file-or-base64-reference",
-  "language": "Bengali",
-  "site_context": "construction",
-  "mode": "scan"
-}
-```
+Send `multipart/form-data`:
+
+| Field | Type | Value |
+|---|---|---|
+| `image` | file | JPEG, PNG, or WebP up to 10 MB |
+| `language` | string | `Bengali`, `Tamil`, or `Hindi` |
+| `site_context` | string | `construction` |
+| `mode` | string | `scan` |
 
 ### Response
 
 ```json
 {
   "scan_id": "scan_001",
+  "language": "Bengali",
   "detected_text": "Danger: Open Edge. Wear Safety Harness. No Unauthorized Entry.",
   "translated_text": "native-language translation",
   "plain_explanation": "There is danger of falling from height.",
