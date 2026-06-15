@@ -11,9 +11,15 @@ export type SpeechResult = {
   message: string;
 };
 
+export type SpeechCallbacks = {
+  onEnd?: () => void;
+  onError?: () => void;
+};
+
 export function speakGuidance(
   text: string,
   language: SupportedLanguage,
+  callbacks: SpeechCallbacks = {},
 ): SpeechResult {
   if (
     typeof window === "undefined" ||
@@ -34,6 +40,8 @@ export function speakGuidance(
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = target;
   if (voice) utterance.voice = voice;
+  utterance.onend = () => callbacks.onEnd?.();
+  utterance.onerror = () => callbacks.onError?.();
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
 
@@ -43,4 +51,22 @@ export function speakGuidance(
       ? `Playing ${language} guidance.`
       : `Playing with the browser's default voice. A ${language} voice was not found; use the transcript to confirm the wording.`,
   };
+}
+
+export function pauseGuidance(): boolean {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return false;
+  window.speechSynthesis.pause();
+  return true;
+}
+
+export function resumeGuidance(): boolean {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return false;
+  window.speechSynthesis.resume();
+  return true;
+}
+
+export function stopGuidance() {
+  if (typeof window !== "undefined" && "speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
 }

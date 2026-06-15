@@ -23,7 +23,7 @@ Build the camera-first SafePoint interface and connect it to the backend API.
 - `RiskBadge`
 - `SafetyResultCard`
 - `PpeIconList`
-- `AudioGuidanceButton`
+- `AudioGuidance`
 - `PictogramCard`
 - `IncidentReportForm`
 - `ConfidenceNote`
@@ -32,6 +32,7 @@ Build the camera-first SafePoint interface and connect it to the backend API.
 
 - `POST /api/scan-safety-image`
 - `POST /api/generate-pictogram-card`
+- `POST /api/generate-audio-guidance`
 - `POST /api/generate-incident-report`
 - `POST /api/generate-briefing`
 
@@ -39,6 +40,11 @@ Build the camera-first SafePoint interface and connect it to the backend API.
 
 - Use `NEXT_PUBLIC_BACKEND_URL`.
 - Do not expose Agnes API key.
+- Do not expose ElevenLabs credentials.
+- Request cloud audio only after the worker presses Play.
+- Keep the exact spoken transcript visible.
+- Revoke temporary audio URLs on stop, retake, or unmount.
+- Fall back to browser speech, then transcript-only guidance.
 - Show `source_state` if fallback/sample data is used.
 - Always show retake option.
 - Always show uncertainty note if confidence is low.
@@ -49,7 +55,7 @@ Build the camera-first SafePoint interface and connect it to the backend API.
 - [ ] Camera/upload works.
 - [ ] API call works.
 - [ ] Risk card renders.
-- [ ] Audio text can be played or simulated.
+- [ ] Audio supports play, pause, resume, stop, replay, and fallback.
 - [ ] Pictogram card renders.
 - [ ] Incident report draft renders.
 - [ ] Error and fallback states exist.

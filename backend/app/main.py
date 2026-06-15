@@ -10,6 +10,7 @@ from fastapi.responses import Response
 from app.config import Settings, settings
 from app.errors import APIError, api_error_handler
 from app.models import (
+    AudioGuidanceRequest,
     BriefingRequest,
     BriefingResponse,
     HealthResponse,
@@ -23,6 +24,7 @@ from app.models import (
     SupportedLanguage,
 )
 from app.services.agnes import AgnesGateway, build_gateway
+from app.services.elevenlabs import ElevenLabsGateway
 from app.services.image_processing import process_image
 from app.services.normalization import normalize_scan
 
@@ -41,6 +43,7 @@ app.add_middleware(
 app.add_exception_handler(APIError, api_error_handler)
 
 _gateway = build_gateway(settings)
+_audio_gateway = ElevenLabsGateway(settings)
 
 
 def get_settings() -> Settings:
@@ -51,12 +54,22 @@ def get_gateway() -> AgnesGateway:
     return _gateway
 
 
+def get_audio_gateway() -> ElevenLabsGateway:
+    return _audio_gateway
+
+
 @app.get("/health", response_model=HealthResponse)
 async def health(config: Settings = Depends(get_settings)) -> HealthResponse:
     return HealthResponse(
         status="ok",
         environment=config.environment,
         agnes_mode=config.agnes_mode,
+        agnes_configured=bool(config.agnes_api_key and config.agnes_base_url),
+        agnes_model=config.agnes_model,
+        elevenlabs_configured=bool(
+            config.elevenlabs_api_key and config.elevenlabs_voice_id
+        ),
+        audio_model=config.elevenlabs_model_id,
         fallback_available=config.use_sample_fallback,
         image_storage_enabled=config.store_scanned_images,
     )
@@ -79,6 +92,22 @@ async def scan_safety_image(
     raw = b""
     result = await gateway.scan(processed, language, site_context)
     return normalize_scan(result, config)
+
+
+@app.post("/api/generate-audio-guidance")
+async def generate_audio_guidance(
+    request: AudioGuidanceRequest,
+    audio_gateway: ElevenLabsGateway = Depends(get_audio_gateway),
+) -> Response:
+    audio = await audio_gateway.generate(request.text, request.language)
+    return Response(
+        content=audio,
+        media_type="audio/mpeg",
+        headers={
+            "Cache-Control": "no-store",
+            "X-Audio-Source": "elevenlabs",
+        },
+    )
 
 
 @app.post("/api/generate-pictogram-card", response_model=PictogramResponse)

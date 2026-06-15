@@ -127,6 +127,33 @@ Purpose: Generate or retrieve a visual safety card.
 }
 ```
 
+## POST /api/generate-audio-guidance
+
+Purpose: Generate worker-requested MP3 guidance from the exact visible
+selected-language transcript.
+
+### Request
+
+```json
+{
+  "text": "selected-language safety guidance",
+  "language": "Bengali"
+}
+```
+
+`text` is trimmed and must contain between 1 and 2,000 characters.
+
+### Success
+
+```text
+200 audio/mpeg
+Cache-Control: no-store
+X-Audio-Source: elevenlabs
+```
+
+Audio bytes are returned directly and are not persisted by SafePoint.
+Provider failures use the common recoverable JSON error response.
+
 ## POST /api/generate-incident-report
 
 Purpose: Convert a worker-language statement into a structured incident or near-miss report.
@@ -204,3 +231,5 @@ Purpose: Generate a short site-specific multilingual safety briefing.
 - Do not return hidden chain-of-thought.
 - Add optional fields instead of breaking existing fields.
 - Incident reports must include `requires_confirmation: true`.
+- Audio generation must require explicit worker action and use the visible
+  transcript verbatim.

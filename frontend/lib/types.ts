@@ -45,13 +45,24 @@ export type IncidentReport = {
   incident_type: string;
   severity: string;
   suggested_next_step: string;
+  mom_workflow: {
+    draft_status: "worker_draft_for_supervisor";
+    review_priority: "routine" | "prompt" | "urgent";
+    reportability_note: string;
+    responsible_party_note: string;
+    deadline_note: string;
+    missing_official_fields: string[];
+    submitted_to_mom: false;
+  };
   requires_confirmation: true;
   source_state: SourceState;
 };
 
 export type DailyBriefing = {
+  language: SupportedLanguage;
   briefing_text: string;
   audio_text: string;
+  target_duration_seconds: 30;
   video_prompt: string;
   pictogram_prompt: string;
   source_state: SourceState;

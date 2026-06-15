@@ -1,5 +1,27 @@
 import {expect, test} from "@playwright/test";
 
+function silentWav(durationSeconds = 1): Buffer {
+  const sampleRate = 8000;
+  const sampleCount = sampleRate * durationSeconds;
+  const dataSize = sampleCount * 2;
+  const buffer = Buffer.alloc(44 + dataSize);
+
+  buffer.write("RIFF", 0);
+  buffer.writeUInt32LE(36 + dataSize, 4);
+  buffer.write("WAVE", 8);
+  buffer.write("fmt ", 12);
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20);
+  buffer.writeUInt16LE(1, 22);
+  buffer.writeUInt32LE(sampleRate, 24);
+  buffer.writeUInt32LE(sampleRate * 2, 28);
+  buffer.writeUInt16LE(2, 32);
+  buffer.writeUInt16LE(16, 34);
+  buffer.write("data", 36);
+  buffer.writeUInt32LE(dataSize, 40);
+  return buffer;
+}
+
 const fixtures = {
   "Open edge": {risk: "Danger", hazard: "fall_hazard"},
   "Corrosive chemical": {risk: "Danger", hazard: "chemical_hazard"},
@@ -142,13 +164,29 @@ test("daily briefing produces worker-language guidance", async ({page}) => {
       }),
     });
   });
+  await page.route("**/api/generate-audio-guidance", async (route) => {
+    await route.fulfill({
+      contentType: "audio/mpeg",
+      headers: {
+        "Cache-Control": "no-store",
+        "X-Audio-Source": "elevenlabs",
+      },
+      body: silentWav(),
+    });
+  });
 
   await page.goto("/");
   await page.getByLabel("Your language").selectOption("Hindi");
   await page.getByRole("button", {name: /Today’s safety briefing/i}).click();
   await page.getByLabel("Site zone").fill("Level 3");
   await page.getByRole("button", {name: "Generate in Hindi"}).click();
-  await expect(page.getByText(/आज Level 3/)).toBeVisible();
+  await expect(page.locator(".briefing-copy")).toContainText("आज Level 3");
   await expect(page.getByText("Demo sample")).toBeVisible();
-  await expect(page.getByRole("button", {name: "Play audio guidance"})).toBeVisible();
+  await page
+    .getByRole("button", {name: "Play guidance in Hindi"})
+    .click();
+  await expect(page.locator(".assistive-status")).toContainText(
+    "Playing Hindi guidance with cloud audio",
+  );
+  await expect(page.getByText(/आज Level 3/).last()).toBeVisible();
 });

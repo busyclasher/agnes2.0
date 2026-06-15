@@ -14,6 +14,7 @@ The backend coordinates image processing, Agnes AI calls, safety reasoning, resp
 - Classify risk
 - Generate PPE/action steps
 - Generate pictogram prompt or image
+- Generate worker-requested multilingual audio guidance
 - Draft incident reports
 - Return structured responses
 - Avoid storing images by default
@@ -57,6 +58,7 @@ backend/
 | `/health` | GET | Health check |
 | `/api/scan-safety-image` | POST | Analyse sign/label image |
 | `/api/generate-pictogram-card` | POST | Generate visual safety card |
+| `/api/generate-audio-guidance` | POST | Stream selected-language MP3 guidance |
 | `/api/generate-incident-report` | POST | Draft incident/near-miss report |
 | `/api/generate-briefing` | POST | Generate daily site briefing |
 
@@ -100,6 +102,9 @@ Use `unknown` when the image is too unclear.
 - Delete temporary files after processing when possible.
 - Do not log raw images or base64 strings.
 - Do not log sensitive worker information unnecessarily.
+- Do not log audio transcripts, provider credentials, or generated audio bytes.
+- Do not persist or cache generated audio; return it with `Cache-Control: no-store`.
+- Tell workers that cloud audio sends the visible transcript to ElevenLabs.
 - Reports must require confirmation before sharing.
 - Agnes API key must remain backend-only.
 
@@ -109,7 +114,7 @@ If Agnes API fails:
 
 1. Check if sample image matches demo image.
 2. Return sample response.
-3. Mark `source_state: "sample"`.
+3. Mark `source_state: "fallback"`.
 4. Show user-facing warning:
    - “Using demo fallback result.”
 
@@ -141,7 +146,7 @@ Do not pretend fallback output is live.
 
 - [ ] Health endpoint works.
 - [ ] Scan endpoint accepts image.
-- [ ] Agnes client wrapper exists.
+- [x] Agnes client wrapper exists.
 - [ ] Scan response follows API contract.
 - [ ] Fallback sample response works.
 - [ ] No API keys exposed.

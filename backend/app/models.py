@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from enum import StrEnum
 from typing import Literal
 
@@ -84,7 +85,38 @@ class IncidentReportRequest(BaseModel):
     language: SupportedLanguage
     worker_statement: str = Field(min_length=3, max_length=2000)
     location: str = Field(min_length=1, max_length=240)
+    occurred_at: datetime
+    event_type: Literal[
+        "near_miss",
+        "unsafe_condition",
+        "injury_or_illness",
+        "major_equipment_or_structure_event",
+        "unsure",
+    ]
+    medical_outcome: Literal[
+        "none_known",
+        "first_aid",
+        "outpatient_or_hospitalisation_leave",
+        "light_duty",
+        "hospital_treatment",
+        "death",
+        "unsure",
+    ]
+    people_affected: int = Field(ge=0, le=50)
+    immediate_actions: str = Field(default="", max_length=1000)
     image_id: str | None = Field(default=None, max_length=120)
+
+
+class MomWorkflowGuidance(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    draft_status: Literal["worker_draft_for_supervisor"]
+    review_priority: Literal["routine", "prompt", "urgent"]
+    reportability_note: str
+    responsible_party_note: str
+    deadline_note: str
+    missing_official_fields: list[str]
+    submitted_to_mom: Literal[False] = False
 
 
 class IncidentReportResponse(BaseModel):
@@ -94,6 +126,7 @@ class IncidentReportResponse(BaseModel):
     incident_type: str
     severity: str
     suggested_next_step: str
+    mom_workflow: MomWorkflowGuidance
     requires_confirmation: Literal[True] = True
     source_state: SourceState
 
@@ -105,20 +138,34 @@ class BriefingRequest(BaseModel):
     site_zone: str = Field(min_length=1, max_length=160)
     today_tasks: list[str] = Field(min_length=1, max_length=8)
     hazards: list[str] = Field(min_length=1, max_length=8)
+    required_ppe: list[str] = Field(min_length=1, max_length=8)
 
 
 class BriefingResponse(BaseModel):
+    language: SupportedLanguage
     briefing_text: str
     audio_text: str
+    target_duration_seconds: Literal[30] = 30
     video_prompt: str
     pictogram_prompt: str
     source_state: SourceState
+
+
+class AudioGuidanceRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    text: str = Field(min_length=1, max_length=2000)
+    language: SupportedLanguage
 
 
 class HealthResponse(BaseModel):
     status: Literal["ok"]
     environment: str
     agnes_mode: str
+    agnes_configured: bool
+    agnes_model: str
+    elevenlabs_configured: bool
+    audio_model: str
     fallback_available: bool
     image_storage_enabled: bool
 

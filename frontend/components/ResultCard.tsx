@@ -4,12 +4,12 @@ import {useState} from "react";
 
 import {assetUrl} from "@/lib/api";
 import {downloadText, shareText} from "@/lib/download";
-import {speakGuidance} from "@/lib/speech";
 import type {
   PictogramResponse,
   ScanResult,
   SupportedLanguage,
 } from "@/lib/types";
+import {AudioGuidance} from "@/components/AudioGuidance";
 import {RiskBadge} from "@/components/RiskBadge";
 import {SourceStatePill} from "@/components/SourceStatePill";
 
@@ -32,7 +32,6 @@ export function ResultCard({
   onRetake: () => void;
   onReport: () => void;
 }) {
-  const [speechStatus, setSpeechStatus] = useState("");
   const [shareStatus, setShareStatus] = useState("");
   const summary = [
     `${result.risk_label}: ${result.plain_explanation}`,
@@ -111,31 +110,7 @@ export function ResultCard({
           </details>
         </div>
 
-        <div className="audio-block">
-          <div>
-            <p className="eyebrow">Listen to guidance</p>
-            <p className="transcript" lang={languageTag(language)}>
-              {result.audio_text}
-            </p>
-          </div>
-          <button
-            className="round-action"
-            type="button"
-            onClick={() => {
-              const status = speakGuidance(result.audio_text, language);
-              setSpeechStatus(status.message);
-            }}
-            aria-label={`Play guidance in ${language}`}
-          >
-            <span aria-hidden="true">▶</span>
-            Play
-          </button>
-          {speechStatus && (
-            <p className="assistive-status" role="status">
-              {speechStatus}
-            </p>
-          )}
-        </div>
+        <AudioGuidance text={result.audio_text} language={language} />
 
         <div className="section-block">
           <div className="section-heading">
@@ -203,5 +178,5 @@ function ppeSymbol(icon: string): string {
 }
 
 function languageTag(language: SupportedLanguage): string {
-  return {Bengali: "bn", Tamil: "ta", Hindi: "hi"}[language];
+  return {Bengali: "bn-BD", Tamil: "ta-IN", Hindi: "hi-IN"}[language];
 }

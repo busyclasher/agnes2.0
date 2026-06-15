@@ -483,9 +483,23 @@ details { margin-top: 16px; color: var(--muted); }
 summary { cursor: pointer; font-weight: 800; color: var(--forest); }
 .audio-block { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; }
 .transcript { margin: 0; line-height: 1.55; }
+.audio-privacy {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: .82rem;
+  line-height: 1.45;
+}
+.audio-controls { display: grid; gap: 8px; justify-items: center; }
 .round-action {
   width: 78px; height: 78px; border-radius: 50%; border: 0; background: var(--safety);
   color: var(--forest-dark); font-weight: 900; display: grid; place-items: center;
+}
+.audio-stop {
+  border: 0;
+  background: transparent;
+  color: var(--forest);
+  font-weight: 900;
+  text-decoration: underline;
 }
 .assistive-status { grid-column: 1 / -1; color: var(--muted); margin: 0; }
 .pictogram { width: 100%; border-radius: 18px; border: 1px solid var(--line); }
@@ -531,16 +545,28 @@ footer {
 }
 .report-sheet form { display: grid; gap: 17px; margin-top: 24px; }
 .report-sheet label { display: grid; gap: 8px; font-weight: 800; }
-.report-sheet textarea, .report-sheet input {
+.report-sheet textarea, .report-sheet input, .report-sheet select {
   border: 1px solid #aebdb8; border-radius: 14px; padding: 14px; color: var(--ink);
+  background: white;
 }
 .report-sheet textarea { min-height: 130px; resize: vertical; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .privacy-copy { color: var(--muted); line-height: 1.5; font-size: .9rem; }
 .error-message { color: var(--danger); font-weight: 800; }
 .report-draft { display: grid; gap: 18px; margin-top: 24px; }
 .report-draft dl { display: grid; gap: 8px; margin: 0; }
 .report-draft dt { color: var(--muted); font-size: .78rem; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; }
 .report-draft dd { margin: 0 0 12px; line-height: 1.55; }
+.pre-line { white-space: pre-line; }
+.workflow-priority, .official-fields {
+  padding: 16px; border-radius: 16px; border: 1px solid var(--line); line-height: 1.5;
+}
+.workflow-priority p, .official-fields p { margin: 8px 0 0; }
+.priority-routine { background: #ecfdf3; color: #05603a; }
+.priority-prompt { background: var(--warning-soft); color: #674b00; }
+.priority-urgent { background: var(--danger-soft); color: #8a1c13; }
+.official-fields ul { padding-left: 22px; line-height: 1.55; }
+.official-fields a { display: inline-block; margin-top: 10px; font-weight: 900; }
 .briefing-copy {
   border-radius: 16px;
   padding: 18px;
@@ -569,6 +595,7 @@ footer {
   .audio-block { grid-template-columns: 1fr; }
   .round-action { width: 100%; height: 54px; border-radius: 14px; display: flex; gap: 8px; }
   .button-row, .capture-actions { grid-template-columns: 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
   .button-row .danger { grid-column: auto; }
 }
 

@@ -28,9 +28,32 @@ FRONTEND_ORIGINS=http://localhost:3001
 
 Then open `http://localhost:3001`.
 
-Keep `AGNES_MODE=fixture` for the working demo. `AGNES_MODE=live` selects the
-integration boundary, but live requests still require the private Agnes
-protocol implementation.
+Use `AGNES_MODE=fixture` for deterministic repository-owned samples. For live
+camera and uploaded-photo analysis, set:
+
+```bash
+AGNES_MODE=live
+AGNES_API_KEY=your_key
+AGNES_BASE_URL=https://apihub.agnes-ai.com/v1
+AGNES_MODEL=agnes-2.0-flash
+```
+
+The API key remains in the backend environment and is never sent to Next.js.
+With `USE_SAMPLE_FALLBACK=true`, only recognized demo samples fall back when
+Agnes is unavailable; arbitrary photos receive an honest recoverable error.
+
+Cloud audio is optional. Add these values to the ignored root `.env`:
+
+```bash
+ELEVENLABS_API_KEY=your_key
+ELEVENLABS_VOICE_ID=your_multilingual_voice_id
+ELEVENLABS_MODEL_ID=eleven_v3
+```
+
+ElevenLabs is called only after the worker presses Play. SafePoint sends the
+visible transcript through the backend, returns non-cached MP3 bytes, and does
+not persist the audio. If cloud audio fails, the UI falls back to browser
+speech synthesis and always keeps the transcript visible.
 
 ### Local Development
 
@@ -49,6 +72,15 @@ npm install
 npm run dev
 ```
 
+### Vercel
+
+Deploy this monorepo as a FastAPI backend project rooted at `backend/` and a
+Next.js frontend project rooted at `frontend/`. The frontend proxies `/api/*`
+to the backend and becomes the single shareable worker URL.
+
+See [docs/VERCEL_DEPLOYMENT.md](docs/VERCEL_DEPLOYMENT.md) for the exact
+project settings and environment variables.
+
 ## Demo Flow
 
 1. Select Bengali, Tamil, or Hindi.
@@ -65,7 +97,7 @@ guidance.
 ## Repository
 
 - `frontend/`: Next.js worker interface
-- `backend/`: FastAPI API and Agnes integration boundary
+- `backend/`: FastAPI API and live Agnes integration
 - `data/`: synthetic sample signs
 - `docs/`: product, architecture, contracts, and testing guidance
 - `roles/`: hackathon role briefs

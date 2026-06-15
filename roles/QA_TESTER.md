@@ -23,11 +23,19 @@ Test SafePoint end-to-end for demo reliability.
 - API failure
 - Unsupported language
 - Incident report
+- Bengali, Tamil, and Hindi cloud audio
+- Missing or invalid ElevenLabs configuration
+- ElevenLabs quota, timeout, malformed response, and network failure
+- Browser speech and transcript-only fallbacks
+- Audio play, pause, resume, stop, replay, retake, and unmount cleanup
+- Secret checks for bundles, health responses, logs, and errors
 
 ## Definition of Done
 
 - [ ] Happy path tested.
 - [ ] Fallback path tested.
 - [ ] Error states tested.
+- [ ] Audio fallback and cleanup tested.
+- [ ] No audio or credentials remain exposed after leaving a result.
 - [ ] No crash on blurry image.
 - [ ] Demo can run with sample data.

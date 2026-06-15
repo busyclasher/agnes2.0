@@ -20,12 +20,16 @@ Build the SafePoint backend API and coordinate AI processing safely.
 - `GET /health`
 - `POST /api/scan-safety-image`
 - `POST /api/generate-pictogram-card`
+- `POST /api/generate-audio-guidance`
 - `POST /api/generate-incident-report`
 - `POST /api/generate-briefing`
 
 ## Backend Rules
 
 - Keep Agnes API key backend-only.
+- Keep ElevenLabs credentials backend-only.
+- Do not log submitted audio text or generated audio bytes.
+- Return generated audio with `Cache-Control: no-store`.
 - Do not log raw image/base64 data.
 - Do not store scanned images by default.
 - Return structured JSON.
@@ -40,4 +44,5 @@ Build the SafePoint backend API and coordinate AI processing safely.
 - [ ] Agnes client wrapper exists.
 - [ ] Fallback path works.
 - [ ] Response matches `API_CONTRACTS.md`.
+- [ ] ElevenLabs failures return recoverable SafePoint errors.
 - [ ] No secrets exposed.

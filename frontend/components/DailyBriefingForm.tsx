@@ -4,8 +4,8 @@ import {FormEvent, useState} from "react";
 
 import {generateDailyBriefing, SafePointApiError} from "@/lib/api";
 import {downloadText} from "@/lib/download";
-import {speakGuidance} from "@/lib/speech";
 import type {DailyBriefing, SupportedLanguage} from "@/lib/types";
+import {AudioGuidance} from "@/components/AudioGuidance";
 import {SourceStatePill} from "@/components/SourceStatePill";
 
 export function DailyBriefingForm({
@@ -18,10 +18,12 @@ export function DailyBriefingForm({
   const [siteZone, setSiteZone] = useState("Level 3");
   const [tasks, setTasks] = useState("open-edge work, scaffold inspection");
   const [hazards, setHazards] = useState("fall hazard, moving materials");
+  const [requiredPpe, setRequiredPpe] = useState(
+    "safety helmet, safety harness, safety boots",
+  );
   const [briefing, setBriefing] = useState<DailyBriefing | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [speechStatus, setSpeechStatus] = useState("");
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -34,6 +36,7 @@ export function DailyBriefingForm({
           siteZone,
           todayTasks: splitList(tasks),
           hazards: splitList(hazards),
+          requiredPpe: splitList(requiredPpe),
         }),
       );
     } catch (caught) {
@@ -89,6 +92,15 @@ export function DailyBriefingForm({
                 placeholder="Separate hazards with commas"
               />
             </label>
+            <label>
+              Required PPE
+              <textarea
+                value={requiredPpe}
+                onChange={(event) => setRequiredPpe(event.target.value)}
+                required
+                placeholder="Separate PPE items with commas"
+              />
+            </label>
             <p className="privacy-copy">
               The briefing supports the site’s official toolbox talk. It does not
               replace it.
@@ -101,23 +113,18 @@ export function DailyBriefingForm({
         ) : (
           <div className="report-draft">
             <div className="section-heading">
-              <h2>Today’s briefing</h2>
+              <div>
+                <p className="eyebrow">
+                  {briefing.target_duration_seconds}-second target
+                </p>
+                <h2>{briefing.language} worker briefing</h2>
+              </div>
               <SourceStatePill state={briefing.source_state} />
             </div>
             <div className="briefing-copy" lang={languageTag(language)}>
               {briefing.briefing_text}
             </div>
-            <button
-              className="button primary full"
-              type="button"
-              onClick={() => {
-                const status = speakGuidance(briefing.audio_text, language);
-                setSpeechStatus(status.message);
-              }}
-            >
-              Play audio guidance
-            </button>
-            {speechStatus && <p role="status">{speechStatus}</p>}
+            <AudioGuidance text={briefing.audio_text} language={language} />
             <details>
               <summary>Agnes visual generation prompts</summary>
               <p><strong>Pictogram:</strong> {briefing.pictogram_prompt}</p>

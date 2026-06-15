@@ -16,6 +16,7 @@
 | `DEMO_FLOW.md` | Demo storyline and backup plan |
 | `TESTING.md` | QA, privacy, accessibility, and demo tests |
 | `ENVIRONMENT.md` | Environment variables and secrets handling |
+| `VERCEL_DEPLOYMENT.md` | Two-project Vercel deployment guide |
 | `ROADMAP.md` | Implementation milestones |
 | `DECISIONS.md` | Architecture decision records |
 
