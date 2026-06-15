@@ -88,7 +88,15 @@ project settings and environment variables.
 3. Review the risk, immediate actions, PPE, translation, and uncertainty.
 4. Listen to the visible guidance transcript.
 5. Generate a low-literacy pictogram card.
-6. Draft and confirm a near-miss report without automatic submission.
+6. Draft and confirm a MOM-aligned supervisor handoff without automatic
+   submission.
+
+The daily briefing targets 30 seconds in the selected worker language. It
+includes today's tasks, hazards, required PPE, and stop-work escalation
+wording. It supplements the site's official toolbox talk.
+
+Incident output is not an MOM submission and does not decide legal
+reportability. See [docs/MOM_WORKFLOW.md](docs/MOM_WORKFLOW.md).
 
 Demo fallback results are visibly marked and are only available for the three
 repository-owned sample images. Unknown images never receive invented fixture

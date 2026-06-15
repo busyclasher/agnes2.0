@@ -23,6 +23,10 @@ Test SafePoint end-to-end for demo reliability.
 - API failure
 - Unsupported language
 - Incident report
+- MOM routine, prompt, and urgent review guidance
+- Explicit `submitted_to_mom: false` state
+- 30-second briefing target in each selected language
+- Exact briefing transcript and audio match
 - Bengali, Tamil, and Hindi cloud audio
 - Missing or invalid ElevenLabs configuration
 - ElevenLabs quota, timeout, malformed response, and network failure

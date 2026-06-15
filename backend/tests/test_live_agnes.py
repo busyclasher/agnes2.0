@@ -10,7 +10,12 @@ from PIL import Image
 
 from app.config import Settings
 from app.errors import APIError
-from app.models import SourceState, SupportedLanguage
+from app.models import (
+    BriefingRequest,
+    IncidentReportRequest,
+    SourceState,
+    SupportedLanguage,
+)
 from app.services.agnes import LiveAgnesGateway
 from app.services.image_processing import process_image
 
@@ -114,3 +119,82 @@ def test_live_scan_requires_backend_credentials() -> None:
         )
 
     assert caught.value.code == "AGNES_NOT_CONFIGURED"
+
+
+def test_live_incident_adds_deterministic_mom_workflow() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        prompt = body["messages"][1]["content"]
+        assert "Medical outcome known to worker: light_duty" in prompt
+        content = {
+            "english_report": "Incident Summary\nA worker was injured.",
+            "worker_language_summary": "தொழிலாளர் காயமடைந்தார்.",
+            "incident_type": "injury",
+            "severity": "injury_follow_up",
+            "suggested_next_step": "Tell the supervisor immediately.",
+        }
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": json.dumps(content)}}]},
+        )
+
+    gateway = LiveAgnesGateway(
+        Settings(
+            agnes_mode="live",
+            agnes_api_key="test-key",
+            agnes_base_url="https://agnes.test/v1",
+        ),
+        httpx.MockTransport(handler),
+    )
+    request = IncidentReportRequest(
+        language=SupportedLanguage.TAMIL,
+        worker_statement="தொழிலாளர் வழுக்கி காயமடைந்தார்.",
+        location="Level 3",
+        occurred_at="2026-06-15T09:30:00+08:00",
+        event_type="injury_or_illness",
+        medical_outcome="light_duty",
+        people_affected=1,
+        immediate_actions="Work stopped.",
+    )
+
+    result = asyncio.run(gateway.incident(request))
+
+    assert result.mom_workflow.review_priority == "prompt"
+    assert result.mom_workflow.submitted_to_mom is False
+    assert "10 days" in result.mom_workflow.deadline_note
+
+
+def test_live_briefing_enforces_language_and_matching_audio() -> None:
+    def handler(_: httpx.Request) -> httpx.Response:
+        content = {
+            "briefing_text": "নিরাপত্তা নির্দেশনা।",
+            "audio_text": "This value must be replaced.",
+            "video_prompt": "Create a 30-second briefing.",
+            "pictogram_prompt": "Create a safety card.",
+        }
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": json.dumps(content)}}]},
+        )
+
+    gateway = LiveAgnesGateway(
+        Settings(
+            agnes_mode="live",
+            agnes_api_key="test-key",
+            agnes_base_url="https://agnes.test/v1",
+        ),
+        httpx.MockTransport(handler),
+    )
+    request = BriefingRequest(
+        language=SupportedLanguage.BENGALI,
+        site_zone="Level 3",
+        today_tasks=["open-edge work"],
+        hazards=["fall hazard"],
+        required_ppe=["safety helmet"],
+    )
+
+    result = asyncio.run(gateway.briefing(request))
+
+    assert result.language == SupportedLanguage.BENGALI
+    assert result.target_duration_seconds == 30
+    assert result.audio_text == result.briefing_text

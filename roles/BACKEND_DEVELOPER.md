@@ -36,6 +36,10 @@ Build the SafePoint backend API and coordinate AI processing safely.
 - Include confidence and uncertainty.
 - Mark fallback/sample results clearly.
 - Do not make official safety determinations.
+- Keep MOM review priority deterministic. Do not ask the model to make a legal
+  reportability decision.
+- Keep `submitted_to_mom` false.
+- Ensure briefing audio text exactly matches the visible transcript.
 
 ## Definition of Done
 

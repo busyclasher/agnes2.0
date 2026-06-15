@@ -16,14 +16,18 @@ Own the SafePoint pitch, demo script, and judging story.
 4. Show translated risk card.
 5. Play audio guidance.
 6. Show generated pictogram card.
-7. Draft near-miss report.
-8. Close with point-of-risk safety comprehension.
+7. Draft a MOM-aligned supervisor handoff.
+8. Show the 30-second worker-language briefing.
+9. Close with point-of-risk safety comprehension.
 
 ## Key Lines
 
 > This is not back-office compliance reporting. It is worker-side safety comprehension.
 
 > SafePoint complements official training and safety procedures. It does not replace them.
+
+> SafePoint prepares the worker account for supervisor review. It does not
+> decide reportability or submit to MOM.
 
 > Agnes AI powers the full multimodal workflow: vision, reasoning, translation, image generation, video briefing, and report drafting.
 

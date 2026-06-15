@@ -102,11 +102,43 @@ def test_incident_report_requires_confirmation() -> None:
             "language": "Tamil",
             "worker_statement": "I slipped near the wet staircase.",
             "location": "Level 3 staircase",
+            "occurred_at": "2026-06-15T09:30:00+08:00",
+            "event_type": "near_miss",
+            "medical_outcome": "none_known",
+            "people_affected": 0,
+            "immediate_actions": "Stopped and warned the supervisor.",
         },
     )
     assert response.status_code == 200
-    assert response.json()["requires_confirmation"] is True
-    assert response.json()["source_state"] == "sample"
+    payload = response.json()
+    assert payload["requires_confirmation"] is True
+    assert payload["source_state"] == "sample"
+    assert payload["mom_workflow"]["draft_status"] == "worker_draft_for_supervisor"
+    assert payload["mom_workflow"]["review_priority"] == "routine"
+    assert payload["mom_workflow"]["submitted_to_mom"] is False
+    assert "Date and Time" in payload["english_report"]
+
+
+def test_serious_incident_gets_urgent_mom_review_guidance() -> None:
+    response = client.post(
+        "/api/generate-incident-report",
+        json={
+            "language": "Bengali",
+            "worker_statement": "A mobile crane toppled near the work area.",
+            "location": "Loading bay",
+            "occurred_at": "2026-06-15T10:00:00+08:00",
+            "event_type": "major_equipment_or_structure_event",
+            "medical_outcome": "unsure",
+            "people_affected": 0,
+            "immediate_actions": "Stopped work and cleared the area.",
+        },
+    )
+
+    assert response.status_code == 200
+    workflow = response.json()["mom_workflow"]
+    assert workflow["review_priority"] == "urgent"
+    assert "immediate notification" in workflow["reportability_note"]
+    assert "within 10 days" in workflow["deadline_note"]
 
 
 def test_pictogram_is_independent() -> None:
@@ -179,18 +211,32 @@ def test_live_mode_falls_back_only_for_known_samples() -> None:
 
 
 def test_daily_briefing_matches_contract() -> None:
-    response = client.post(
-        "/api/generate-briefing",
-        json={
-            "language": "Hindi",
-            "site_zone": "Level 3",
-            "today_tasks": ["open-edge work", "scaffold inspection"],
-            "hazards": ["fall hazard", "moving materials"],
-        },
-    )
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["source_state"] == "sample"
-    assert "Level 3" in payload["briefing_text"]
-    assert payload["audio_text"] == payload["briefing_text"]
-    assert "30-second" in payload["video_prompt"]
+    expected_ppe = {
+        "Bengali": "নিরাপত্তা হেলমেট",
+        "Tamil": "பாதுகாப்புத் தலைக்கவசம்",
+        "Hindi": "सुरक्षा हेलमेट",
+    }
+    for language, translated_ppe in expected_ppe.items():
+        response = client.post(
+            "/api/generate-briefing",
+            json={
+                "language": language,
+                "site_zone": "Level 3",
+                "today_tasks": ["open-edge work", "scaffold inspection"],
+                "hazards": ["fall hazard", "moving materials"],
+                "required_ppe": [
+                    "safety helmet",
+                    "safety harness",
+                    "safety boots",
+                ],
+            },
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["source_state"] == "sample"
+        assert payload["language"] == language
+        assert payload["target_duration_seconds"] == 30
+        assert "Level 3" in payload["briefing_text"]
+        assert translated_ppe in payload["briefing_text"]
+        assert payload["audio_text"] == payload["briefing_text"]
+        assert "30-second" in payload["video_prompt"]

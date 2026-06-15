@@ -39,6 +39,8 @@ Own the SafePoint product direction and keep the team focused on the main value:
 - As a worker, I want to know the risk level so I know whether to stop or proceed carefully.
 - As a worker, I want audio guidance so I do not need to read long text.
 - As a worker, I want to report a near-miss in my language so it can be understood by my supervisor.
+- As a worker, I want a short briefing in my chosen language before starting
+  work.
 
 ## Key Questions
 
@@ -46,3 +48,5 @@ Own the SafePoint product direction and keep the team focused on the main value:
 - Is this action-oriented, or just translated text?
 - Are we overclaiming what AI can safely decide?
 - Is the demo simple enough to run reliably?
+- Does the report support the MOM workflow without pretending to be an official
+  submission?

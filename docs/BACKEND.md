@@ -16,6 +16,9 @@ The backend coordinates image processing, Agnes AI calls, safety reasoning, resp
 - Generate pictogram prompt or image
 - Generate worker-requested multilingual audio guidance
 - Draft incident reports
+- Add deterministic MOM workflow review guidance
+- Keep incident output as an unsubmitted supervisor handoff
+- Target 30-second briefings in the selected language
 - Return structured responses
 - Avoid storing images by default
 
@@ -106,6 +109,9 @@ Use `unknown` when the image is too unclear.
 - Do not persist or cache generated audio; return it with `Cache-Control: no-store`.
 - Tell workers that cloud audio sends the visible transcript to ElevenLabs.
 - Reports must require confirmation before sharing.
+- The model must not decide MOM reportability.
+- MOM review priority is derived from worker-selected facts.
+- Briefing audio must exactly match the visible transcript.
 - Agnes API key must remain backend-only.
 
 ## Fallback Strategy

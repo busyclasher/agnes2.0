@@ -165,6 +165,11 @@ Purpose: Convert a worker-language statement into a structured incident or near-
   "language": "Tamil",
   "worker_statement": "I slipped near the wet staircase on Level 3.",
   "location": "Level 3 staircase",
+  "occurred_at": "2026-06-15T09:30:00+08:00",
+  "event_type": "near_miss",
+  "medical_outcome": "none_known",
+  "people_affected": 0,
+  "immediate_actions": "Stopped work and warned the supervisor.",
   "image_id": "optional"
 }
 ```
@@ -179,6 +184,17 @@ Purpose: Convert a worker-language statement into a structured incident or near-
   "incident_type": "slip_trip_fall",
   "severity": "near_miss",
   "suggested_next_step": "Notify the supervisor and mark the wet area.",
+  "mom_workflow": {
+    "draft_status": "worker_draft_for_supervisor",
+    "review_priority": "routine",
+    "reportability_note": "The supervisor must assess the facts and reporting route.",
+    "responsible_party_note": "SafePoint does not submit to MOM.",
+    "deadline_note": "No MOM deadline is assigned by SafePoint.",
+    "missing_official_fields": [
+      "Reporter personal particulars and company details"
+    ],
+    "submitted_to_mom": false
+  },
   "requires_confirmation": true,
   "source_state": "live"
 }
@@ -195,7 +211,8 @@ Purpose: Generate a short site-specific multilingual safety briefing.
   "language": "Bengali",
   "site_zone": "Level 3",
   "today_tasks": ["work near open edge", "scaffolding inspection"],
-  "hazards": ["fall hazard", "moving materials"]
+  "hazards": ["fall hazard", "moving materials"],
+  "required_ppe": ["safety helmet", "safety harness", "safety boots"]
 }
 ```
 
@@ -203,8 +220,10 @@ Purpose: Generate a short site-specific multilingual safety briefing.
 
 ```json
 {
+  "language": "Bengali",
   "briefing_text": "Today you are working near an open edge...",
   "audio_text": "Today you are working near an open edge...",
+  "target_duration_seconds": 30,
   "video_prompt": "Create a 30-second safety briefing...",
   "pictogram_prompt": "Create a simple briefing card...",
   "source_state": "live"
@@ -231,5 +250,9 @@ Purpose: Generate a short site-specific multilingual safety briefing.
 - Do not return hidden chain-of-thought.
 - Add optional fields instead of breaking existing fields.
 - Incident reports must include `requires_confirmation: true`.
+- Incident drafts must state that they are not submitted to MOM.
+- MOM workflow priority and deadlines are deterministic guidance, not AI legal
+  decisions.
+- Briefing `audio_text` must exactly match the visible `briefing_text`.
 - Audio generation must require explicit worker action and use the visible
   transcript verbatim.

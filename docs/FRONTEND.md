@@ -86,6 +86,8 @@ Outputs:
 - English report
 - incident type
 - suggested next step
+- MOM workflow review priority
+- official information still required
 - save/share confirmation
 
 ### 6. Daily Briefing Screen
@@ -93,7 +95,7 @@ Outputs:
 Optional stretch:
 
 - today’s site risks
-- generated audio/video briefing
+- 30-second selected-language audio briefing
 - pictogram summary
 
 ## Component Suggestions
@@ -172,6 +174,9 @@ NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
 ```
 
 Never expose Agnes API keys in frontend code.
+
+Label report output as a supervisor handoff, not an MOM submission. Keep the
+briefing transcript and spoken audio identical.
 
 ## Demo Requirements
 

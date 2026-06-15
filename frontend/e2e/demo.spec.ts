@@ -129,6 +129,19 @@ test("incident draft requires confirmation before export", async ({page}) => {
         incident_type: "slip_trip_fall",
         severity: "near_miss",
         suggested_next_step: "Notify the supervisor and mark the wet area.",
+        mom_workflow: {
+          draft_status: "worker_draft_for_supervisor",
+          review_priority: "routine",
+          reportability_note:
+            "This appears suitable for internal near-miss review.",
+          responsible_party_note:
+            "SafePoint does not submit to MOM. The employer or occupier reviews it.",
+          deadline_note: "No MOM deadline is assigned by SafePoint.",
+          missing_official_fields: [
+            "Reporter personal particulars and company details",
+          ],
+          submitted_to_mom: false,
+        },
         requires_confirmation: true,
         source_state: "sample",
       }),
@@ -142,7 +155,14 @@ test("incident draft requires confirmation before export", async ({page}) => {
   await page.getByRole("button", {name: "Report incident"}).click();
   await page.getByLabel("What happened?").fill("I slipped near the wet staircase.");
   await page.getByLabel("Location").fill("Level 3 staircase");
+  await page
+    .getByLabel("What was done immediately?")
+    .fill("Stopped work and warned the supervisor.");
   await page.getByRole("button", {name: "Create report draft"}).click();
+  await expect(page.getByText("ROUTINE supervisor review")).toBeVisible();
+  await expect(
+    page.getByText("Still needed for an official MOM report"),
+  ).toBeVisible();
   const exportButton = page.getByRole("button", {
     name: "Save / share reviewed draft",
   });
@@ -156,8 +176,10 @@ test("daily briefing produces worker-language guidance", async ({page}) => {
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
+        language: "Hindi",
         briefing_text: "आज Level 3 क्षेत्र में खुले किनारे का काम है।",
         audio_text: "आज Level 3 क्षेत्र में खुले किनारे का काम है।",
+        target_duration_seconds: 30,
         video_prompt: "Create a calm 30-second safety briefing.",
         pictogram_prompt: "Create a high-contrast fall-hazard briefing card.",
         source_state: "sample",

@@ -45,6 +45,9 @@ Build the camera-first SafePoint interface and connect it to the backend API.
 - Keep the exact spoken transcript visible.
 - Revoke temporary audio URLs on stop, retake, or unmount.
 - Fall back to browser speech, then transcript-only guidance.
+- Label incident output as a supervisor handoff, not an MOM submission.
+- Show official information still required and link to the MOM workflow.
+- Show the 30-second briefing target and selected language.
 - Show `source_state` if fallback/sample data is used.
 - Always show retake option.
 - Always show uncertainty note if confidence is low.
@@ -58,4 +61,6 @@ Build the camera-first SafePoint interface and connect it to the backend API.
 - [ ] Audio supports play, pause, resume, stop, replay, and fallback.
 - [ ] Pictogram card renders.
 - [ ] Incident report draft renders.
+- [ ] MOM handoff boundary and review priority are visible.
+- [ ] Briefing transcript and audio use the selected language.
 - [ ] Error and fallback states exist.

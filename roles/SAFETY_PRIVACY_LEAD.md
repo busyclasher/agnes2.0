@@ -40,6 +40,10 @@ SafePoint should not say:
 - Spoken instructions exactly match the visible transcript
 - No audio persistence or caching by SafePoint
 - Clear confirmation before saving/sharing reports
+- No NRIC, FIN, medical documents, insurance details, or MOM credentials in the
+  worker draft
+- No claim that SafePoint decides reportability or submits to MOM
+- Briefing supplements, but never replaces, the official toolbox talk
 
 ## Definition of Done
 

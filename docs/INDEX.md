@@ -17,6 +17,7 @@
 | `TESTING.md` | QA, privacy, accessibility, and demo tests |
 | `ENVIRONMENT.md` | Environment variables and secrets handling |
 | `VERCEL_DEPLOYMENT.md` | Two-project Vercel deployment guide |
+| `MOM_WORKFLOW.md` | MOM incident handoff and briefing boundaries |
 | `ROADMAP.md` | Implementation milestones |
 | `DECISIONS.md` | Architecture decision records |
 
