@@ -1,6 +1,6 @@
 "use client";
 
-import {ChangeEvent, useEffect, useRef, useState} from "react";
+import {useEffect, useState} from "react";
 
 import {
   generatePictogram,
@@ -12,6 +12,7 @@ import type {
   ScanResult,
   SupportedLanguage,
 } from "@/lib/types";
+import {CameraCapture} from "@/components/CameraCapture";
 import {IncidentReportForm} from "@/components/IncidentReportForm";
 import {CoreFeatures} from "@/components/CoreFeatures";
 import {DailyBriefingForm} from "@/components/DailyBriefingForm";
@@ -45,8 +46,6 @@ export function SafetyApp() {
   const [error, setError] = useState("");
   const [reportOpen, setReportOpen] = useState(false);
   const [briefingOpen, setBriefingOpen] = useState(false);
-  const cameraInput = useRef<HTMLInputElement>(null);
-  const uploadInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     return () => {
@@ -61,12 +60,6 @@ export function SafetyApp() {
     setPictogram(null);
     setError("");
     setScanState("captured");
-  }
-
-  function handleFile(event: ChangeEvent<HTMLInputElement>) {
-    const nextFile = event.target.files?.[0];
-    if (nextFile) selectFile(nextFile);
-    event.target.value = "";
   }
 
   async function chooseSample(name: string) {
@@ -181,53 +174,10 @@ export function SafetyApp() {
                 <button type="button" onClick={reset}>Remove</button>
               </div>
             ) : (
-              <div className="capture-target" aria-hidden="true">
-                <span className="focus-corner top-left" />
-                <span className="focus-corner top-right" />
-                <span className="focus-corner bottom-left" />
-                <span className="focus-corner bottom-right" />
-                <div className="camera-symbol">◎</div>
-                <strong>Keep the full sign inside the frame</strong>
-                <small>Use a clear, straight-on photo</small>
-              </div>
+              <CameraCapture onFileSelected={selectFile} />
             )}
 
-            <input
-              ref={cameraInput}
-              className="sr-only"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              capture="environment"
-              onChange={handleFile}
-              aria-label="Take a photo of a safety sign"
-            />
-            <input
-              ref={uploadInput}
-              className="sr-only"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handleFile}
-              aria-label="Upload a safety sign image"
-            />
-
-            {!file ? (
-              <div className="capture-actions">
-                <button
-                  className="button primary"
-                  type="button"
-                  onClick={() => cameraInput.current?.click()}
-                >
-                  <span aria-hidden="true">◎</span> Scan sign
-                </button>
-                <button
-                  className="button secondary"
-                  type="button"
-                  onClick={() => uploadInput.current?.click()}
-                >
-                  Upload photo
-                </button>
-              </div>
-            ) : (
+            {file && (
               <button className="button primary full" type="button" onClick={analyze}>
                 Analyse safety sign
               </button>

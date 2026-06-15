@@ -6,6 +6,21 @@ const fixtures = {
   "PPE required": {risk: "Caution", hazard: "ppe_required"},
 };
 
+test("captures a frame from the live rear-camera preview", async ({page}) => {
+  await page.goto("/");
+  await page.getByRole("button", {name: "Scan sign"}).click();
+  await expect(page.getByText("Camera live")).toBeVisible();
+  const preview = page.getByLabel("Live camera preview");
+  await expect(preview).toBeVisible();
+  await expect.poll(
+    () => preview.evaluate((video: HTMLVideoElement) => video.videoWidth),
+  ).toBeGreaterThan(0);
+  await page.getByRole("button", {name: "Capture photo"}).click();
+  await expect(
+    page.getByRole("button", {name: "Analyse safety sign"}),
+  ).toBeEnabled();
+});
+
 for (const [sample, expected] of Object.entries(fixtures)) {
   test(`${sample} completes the worker flow`, async ({page}) => {
     await page.route("**/api/scan-safety-image", async (route) => {
