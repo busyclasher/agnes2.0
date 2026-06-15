@@ -1,0 +1,137 @@
+from __future__ import annotations
+
+import html
+from urllib.parse import quote
+
+from fastapi import Depends, FastAPI, File, Form, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
+
+from app.config import Settings, settings
+from app.errors import APIError, api_error_handler
+from app.models import (
+    HealthResponse,
+    IncidentReportRequest,
+    IncidentReportResponse,
+    PictogramRequest,
+    PictogramResponse,
+    RiskLevel,
+    ScanResult,
+    SourceState,
+    SupportedLanguage,
+)
+from app.services.agnes import AgnesGateway, build_gateway
+from app.services.image_processing import process_image
+from app.services.normalization import normalize_scan
+
+app = FastAPI(
+    title="SafePoint API",
+    version="0.1.0",
+    description="Worker-side, point-of-risk safety comprehension API.",
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=list(settings.frontend_origins),
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
+app.add_exception_handler(APIError, api_error_handler)
+
+_gateway = build_gateway(settings)
+
+
+def get_settings() -> Settings:
+    return settings
+
+
+def get_gateway() -> AgnesGateway:
+    return _gateway
+
+
+@app.get("/health", response_model=HealthResponse)
+async def health(config: Settings = Depends(get_settings)) -> HealthResponse:
+    return HealthResponse(
+        status="ok",
+        environment=config.environment,
+        agnes_mode=config.agnes_mode,
+        fallback_available=config.use_sample_fallback,
+        image_storage_enabled=config.store_scanned_images,
+    )
+
+
+@app.post("/api/scan-safety-image", response_model=ScanResult)
+async def scan_safety_image(
+    image: UploadFile = File(...),
+    language: SupportedLanguage = Form(...),
+    site_context: str = Form(default="construction", max_length=120),
+    mode: str = Form(default="scan", pattern=r"^scan$"),
+    config: Settings = Depends(get_settings),
+    gateway: AgnesGateway = Depends(get_gateway),
+) -> ScanResult:
+    del mode
+    raw = await image.read(config.max_image_bytes + 1)
+    await image.close()
+    processed = process_image(raw, image.content_type, config)
+    raw = b""
+    result = await gateway.scan(processed, language, site_context)
+    return normalize_scan(result, config)
+
+
+@app.post("/api/generate-pictogram-card", response_model=PictogramResponse)
+async def generate_pictogram(
+    request: PictogramRequest,
+) -> PictogramResponse:
+    query = quote(request.language.value)
+    return PictogramResponse(
+        image_url=(
+            f"/api/pictogram-assets/{request.risk_level.value}/"
+            f"{request.hazard_type}.svg?language={query}"
+        ),
+        alt_text=(
+            f"{request.risk_level.value.title()} safety card for "
+            f"{request.hazard_type.replace('_', ' ')}."
+        ),
+        source_state=SourceState.SAMPLE,
+    )
+
+
+@app.get("/api/pictogram-assets/{risk_level}/{hazard_type}.svg")
+async def pictogram_asset(
+    risk_level: RiskLevel, hazard_type: str, language: str = "Bengali"
+) -> Response:
+    if not hazard_type.replace("_", "").isalnum():
+        raise APIError(
+            "INVALID_PICTOGRAM",
+            "The requested pictogram is invalid.",
+            status_code=400,
+            recoverable=False,
+        )
+    colors = {
+        RiskLevel.RED: ("#b42318", "#fff5f3"),
+        RiskLevel.YELLOW: ("#9a6700", "#fff8c5"),
+        RiskLevel.GREEN: ("#067647", "#ecfdf3"),
+        RiskLevel.UNKNOWN: ("#475467", "#f2f4f7"),
+    }
+    accent, background = colors[risk_level]
+    title = html.escape(risk_level.value.upper())
+    hazard = html.escape(hazard_type.replace("_", " ").title())
+    lang = html.escape(language)
+    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560">
+<rect width="900" height="560" rx="44" fill="{background}"/>
+<rect x="32" y="32" width="836" height="496" rx="32" fill="none" stroke="{accent}" stroke-width="18"/>
+<path d="M450 100 650 430H250Z" fill="{accent}"/>
+<text x="450" y="330" text-anchor="middle" font-family="Arial" font-size="180" font-weight="700" fill="white">!</text>
+<text x="450" y="78" text-anchor="middle" font-family="Arial" font-size="44" font-weight="700" fill="{accent}">{title}</text>
+<text x="450" y="480" text-anchor="middle" font-family="Arial" font-size="42" font-weight="700" fill="{accent}">{hazard}</text>
+<text x="820" y="510" text-anchor="end" font-family="Arial" font-size="24" fill="{accent}">{lang}</text>
+</svg>"""
+    return Response(svg, media_type="image/svg+xml")
+
+
+@app.post("/api/generate-incident-report", response_model=IncidentReportResponse)
+async def generate_incident_report(
+    request: IncidentReportRequest,
+    gateway: AgnesGateway = Depends(get_gateway),
+) -> IncidentReportResponse:
+    return await gateway.incident(request)
