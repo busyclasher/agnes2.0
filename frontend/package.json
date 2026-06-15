@@ -10,8 +10,8 @@
     "build": "next build --webpack",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "PATH=$(npm config get prefix)/bin:/usr/local/bin:/usr/bin:/bin ./node_modules/.bin/vitest run",
+    "test:watch": "PATH=$(npm config get prefix)/bin:/usr/local/bin:/usr/bin:/bin ./node_modules/.bin/vitest",
     "e2e": "playwright test"
   },
   "dependencies": {

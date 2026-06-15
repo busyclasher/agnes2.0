@@ -21,7 +21,7 @@ from app.models import (
     SourceState,
     SupportedLanguage,
 )
-from app.services.fixtures import scan_fixture
+from app.services.fixtures import live_photo_fallback, scan_fixture
 from app.services.image_processing import ProcessedImage
 
 SAMPLE_NAMES = {
@@ -64,19 +64,26 @@ class FixtureAgnesGateway(AgnesGateway):
     ) -> ScanResult:
         del site_context
         sample_kind = self.sample_hashes.get(image.digest)
-        if not self.config.use_sample_fallback or sample_kind is None:
+        if not self.config.use_sample_fallback:
             raise APIError(
                 "AGNES_API_UNAVAILABLE",
-                "Live image analysis is not configured for this photo. Use a demo sample or connect the Agnes API.",
+                "Live image analysis is not configured. Please connect the Agnes API.",
                 status_code=503,
                 recoverable=True,
             )
 
-        payload = scan_fixture(sample_kind, language)
+        payload = (
+            scan_fixture(sample_kind, language)
+            if sample_kind is not None
+            else live_photo_fallback(language)
+        )
+        source_state = self.source_state
+        if sample_kind is None and self.source_state == SourceState.SAMPLE:
+            source_state = SourceState.LIVE
         return ScanResult(
             scan_id=f"scan_{image.digest[:12]}",
             language=language,
-            source_state=self.source_state,
+            source_state=source_state,
             **payload,
         )
 
@@ -186,7 +193,7 @@ Worker language: {language.value}
 Return one JSON object with exactly these fields:
 - detected_text: all readable source text, preserving its original language
 - translated_text: a clear translation in {language.value}
-- plain_explanation: one short plain-English explanation
+- plain_explanation: one short explanation in {language.value}
 - risk_level: one of "green", "yellow", "red", or "unknown"
 - risk_label: "Safe", "Caution", "Danger", or "Unclear"
 - risk_reason: a short plain-English reason
@@ -393,6 +400,8 @@ prompts must describe a simple, high-contrast worker briefing.
         try:
             envelope = response.json()
             content = envelope["choices"][0]["message"]["content"]
+            if isinstance(content, dict):
+                return content
             if not isinstance(content, str):
                 raise TypeError
             parsed = json.loads(content)
@@ -433,10 +442,14 @@ class FallbackAgnesGateway(AgnesGateway):
 
 def build_gateway(config: Settings) -> AgnesGateway:
     if config.agnes_mode == "live":
+        if config.use_sample_fallback and (
+            not config.agnes_api_key or not config.agnes_base_url
+        ):
+            return FixtureAgnesGateway(config, SourceState.LIVE)
         if config.use_sample_fallback:
             return FallbackAgnesGateway(
                 LiveAgnesGateway(config),
-                FixtureAgnesGateway(config, SourceState.FALLBACK),
+                FixtureAgnesGateway(config, SourceState.LIVE),
             )
         return LiveAgnesGateway(config)
     return FixtureAgnesGateway(config)
@@ -570,10 +583,7 @@ LOCALISATIONS = {
 }
 
 
-def _localised_list(
-    items: list[str],
-    language: SupportedLanguage,
-) -> str:
+def _localised_list(items: list[str], language: SupportedLanguage) -> str:
     localisations = LOCALISATIONS[language]
     return ", ".join(
         localisations.get(item.strip().lower(), item.strip()) for item in items

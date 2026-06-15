@@ -6,6 +6,7 @@ import type {
   RiskLevel,
   ScanResult,
   SupportedLanguage,
+  TranscriptResponse,
 } from "@/lib/types";
 
 export const BACKEND_URL = (
@@ -33,6 +34,21 @@ async function parseResponse<T>(response: Response): Promise<T> {
     );
   }
   return payload as T;
+}
+
+async function parseBlobResponse(response: Response): Promise<Blob> {
+  if (response.ok) return response.blob();
+  let error: ApiErrorPayload | null = null;
+  try {
+    error = (await response.json()) as ApiErrorPayload;
+  } catch {
+    error = null;
+  }
+  throw new SafePointApiError(
+    error?.error?.message ?? "SafePoint could not complete the request.",
+    error?.error?.code ?? "UNKNOWN_ERROR",
+    error?.error?.recoverable ?? false,
+  );
 }
 
 export async function scanSafetyImage(
@@ -110,6 +126,38 @@ export async function generateIncidentReport(input: {
         people_affected: input.peopleAffected,
         immediate_actions: input.immediateActions,
       }),
+    }),
+  );
+}
+
+export async function generateGuidanceSpeech(input: {
+  text: string;
+  language: SupportedLanguage;
+}): Promise<Blob> {
+  return parseBlobResponse(
+    await fetch(`${BACKEND_URL}/api/speech/guidance`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        text: input.text,
+        language: input.language,
+      }),
+    }),
+  );
+}
+
+export async function transcribeIncidentAudio(input: {
+  audio: Blob;
+  language: SupportedLanguage;
+}): Promise<TranscriptResponse> {
+  const form = new FormData();
+  const extension = input.audio.type.includes("mp4") ? "m4a" : "webm";
+  form.append("audio", input.audio, `incident-memo.${extension}`);
+  form.append("language", input.language);
+  return parseResponse<TranscriptResponse>(
+    await fetch(`${BACKEND_URL}/api/speech/transcribe`, {
+      method: "POST",
+      body: form,
     }),
   );
 }

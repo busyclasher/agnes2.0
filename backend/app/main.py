@@ -13,6 +13,7 @@ from app.models import (
     AudioGuidanceRequest,
     BriefingRequest,
     BriefingResponse,
+    GuidanceSpeechRequest,
     HealthResponse,
     IncidentReportRequest,
     IncidentReportResponse,
@@ -22,6 +23,7 @@ from app.models import (
     ScanResult,
     SourceState,
     SupportedLanguage,
+    TranscriptResponse,
 )
 from app.services.agnes import AgnesGateway, build_gateway
 from app.services.elevenlabs import ElevenLabsGateway
@@ -42,8 +44,7 @@ app.add_middleware(
 )
 app.add_exception_handler(APIError, api_error_handler)
 
-_gateway = build_gateway(settings)
-_audio_gateway = ElevenLabsGateway(settings)
+_speech_gateway = ElevenLabsGateway(settings)
 
 
 def get_settings() -> Settings:
@@ -54,8 +55,12 @@ def get_gateway() -> AgnesGateway:
     return _gateway
 
 
+def get_speech_gateway() -> ElevenLabsGateway:
+    return _speech_gateway
+
+
 def get_audio_gateway() -> ElevenLabsGateway:
-    return _audio_gateway
+    return _speech_gateway
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -167,6 +172,39 @@ async def generate_incident_report(
     gateway: AgnesGateway = Depends(get_gateway),
 ) -> IncidentReportResponse:
     return await gateway.incident(request)
+
+
+@app.post("/api/speech/guidance")
+async def generate_guidance_speech(
+    request: GuidanceSpeechRequest,
+    speech_gateway: ElevenLabsGateway = Depends(get_speech_gateway),
+) -> Response:
+    audio = await speech_gateway.create_speech(request.text, request.language)
+    return Response(content=audio.content, media_type=audio.media_type)
+
+
+@app.post("/api/speech/transcribe", response_model=TranscriptResponse)
+async def transcribe_speech(
+    audio: UploadFile = File(...),
+    language: SupportedLanguage = Form(...),
+    config: Settings = Depends(get_settings),
+    speech_gateway: ElevenLabsGateway = Depends(get_speech_gateway),
+) -> TranscriptResponse:
+    raw = await audio.read(config.max_audio_bytes + 1)
+    await audio.close()
+    if len(raw) > config.max_audio_bytes:
+        raise APIError(
+            "AUDIO_TOO_LARGE",
+            "The voice memo is too large. Please record a shorter memo.",
+            status_code=413,
+            recoverable=True,
+        )
+    return await speech_gateway.transcribe(
+        raw,
+        audio.content_type,
+        audio.filename or "incident-memo.webm",
+        language,
+    )
 
 
 @app.post("/api/generate-briefing", response_model=BriefingResponse)

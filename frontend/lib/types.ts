@@ -58,6 +58,14 @@ export type IncidentReport = {
   source_state: SourceState;
 };
 
+export type TranscriptResponse = {
+  transcript: string;
+  language: SupportedLanguage;
+  detected_language_code: string | null;
+  confidence: number | null;
+  source_state: SourceState;
+};
+
 export type DailyBriefing = {
   language: SupportedLanguage;
   briefing_text: string;

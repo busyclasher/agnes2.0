@@ -119,8 +119,71 @@ BASE_FIXTURES = {
     },
 }
 
+GENERIC_LIVE_PHOTO_TRANSLATIONS = {
+    SupportedLanguage.BENGALI: {
+        "translated_text": (
+            "ছবিটি পরিষ্কারভাবে পড়া যায়নি। দয়া করে সাইনটির কাছ থেকে সোজা ছবি তুলুন "
+            "এবং নিশ্চিত না হলে সুপারভাইজারের সঙ্গে পরীক্ষা করুন।"
+        ),
+        "plain_explanation": "ছবিটি থেকে সতর্কবার্তাটি পরিষ্কারভাবে নিশ্চিত করা যায়নি।",
+        "audio_text": (
+            "আমি পুরোপুরি নিশ্চিত নই কারণ ছবিটি অস্পষ্ট। দয়া করে কাছ থেকে আবার ছবি তুলুন। "
+            "নিশ্চিত না হলে সুপারভাইজারের সঙ্গে পরীক্ষা করুন।"
+        ),
+    },
+    SupportedLanguage.TAMIL: {
+        "translated_text": (
+            "படத்தில் உள்ள சின்னத்தை தெளிவாகப் படிக்க முடியவில்லை. சின்னத்துக்கு அருகில் "
+            "நேராக மீண்டும் படம் எடுக்கவும். தெளிவில்லையெனில் மேற்பார்வையாளரிடம் சரிபார்க்கவும்."
+        ),
+        "plain_explanation": "இந்த படத்திலிருந்து எச்சரிக்கையை தெளிவாக உறுதிப்படுத்த முடியவில்லை.",
+        "audio_text": (
+            "படம் தெளிவாக இல்லாததால் நான் முழுமையாக உறுதியாக இல்லை. அருகில் இருந்து மீண்டும் "
+            "படம் எடுக்கவும். தெளிவில்லையெனில் மேற்பார்வையாளரிடம் சரிபார்க்கவும்."
+        ),
+    },
+    SupportedLanguage.HINDI: {
+        "translated_text": (
+            "फोटो में संकेत साफ़ पढ़ा नहीं जा सका। कृपया संकेत के पास जाकर सीधी फोटो लें "
+            "और संदेह हो तो सुपरवाइज़र से जांच करें।"
+        ),
+        "plain_explanation": "इस फोटो से चेतावनी स्पष्ट रूप से पुष्टि नहीं हो सकी।",
+        "audio_text": (
+            "मैं पूरी तरह निश्चित नहीं हूं क्योंकि फोटो साफ़ नहीं है। कृपया पास से फिर फोटो लें। "
+            "संदेह हो तो सुपरवाइज़र से जांच करें।"
+        ),
+    },
+}
+
+GENERIC_LIVE_PHOTO_FIXTURE = {
+    "detected_text": "unknown",
+    "risk_level": "unknown",
+    "risk_label": "Unclear",
+    "risk_reason": (
+        "The uploaded photo could not be read clearly enough to identify the sign or grade the risk."
+    ),
+    "hazard_type": "unclear_sign",
+    "ppe_required": [],
+    "action_steps": [
+        {"label": "Retake the photo closer and straight-on.", "priority": "high"},
+        {"label": "Do not rely on this result if the sign is safety-critical.", "priority": "high"},
+        {"label": "Please check with your supervisor if unsure.", "priority": "high"},
+    ],
+    "confidence": 0.62,
+    "uncertainty_note": "I am not fully certain because the image could not be read clearly.",
+    "pictogram_prompt": (
+        "Simple grey unclear-sign card with a camera retake symbol and supervisor-check symbol."
+    ),
+}
+
 
 def scan_fixture(kind: str, language: SupportedLanguage) -> dict:
     result = deepcopy(BASE_FIXTURES[kind])
     result.update(TRANSLATIONS[kind][language])
+    return result
+
+
+def live_photo_fallback(language: SupportedLanguage) -> dict:
+    result = deepcopy(GENERIC_LIVE_PHOTO_FIXTURE)
+    result.update(GENERIC_LIVE_PHOTO_TRANSLATIONS[language])
     return result

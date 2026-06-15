@@ -131,6 +131,21 @@ class IncidentReportResponse(BaseModel):
     source_state: SourceState
 
 
+class GuidanceSpeechRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    text: str = Field(min_length=1, max_length=5000)
+    language: SupportedLanguage
+
+
+class TranscriptResponse(BaseModel):
+    transcript: str
+    language: SupportedLanguage
+    detected_language_code: str | None = None
+    confidence: float | None = Field(default=None, ge=0, le=1)
+    source_state: SourceState
+
+
 class BriefingRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

@@ -1,8 +1,12 @@
 "use client";
 
-import {FormEvent, useState} from "react";
+import {FormEvent, useRef, useState} from "react";
 
-import {generateIncidentReport, SafePointApiError} from "@/lib/api";
+import {
+  generateIncidentReport,
+  SafePointApiError,
+  transcribeIncidentAudio,
+} from "@/lib/api";
 import {downloadText, shareText} from "@/lib/download";
 import type {IncidentReport, SupportedLanguage} from "@/lib/types";
 import {SourceStatePill} from "@/components/SourceStatePill";
@@ -38,8 +42,12 @@ export function IncidentReportForm({
   const [report, setReport] = useState<IncidentReport | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -66,6 +74,73 @@ export function IncidentReportForm({
       );
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function startRecording() {
+    setError("");
+    setStatus("");
+    if (
+      typeof navigator === "undefined" ||
+      !navigator.mediaDevices ||
+      typeof MediaRecorder === "undefined"
+    ) {
+      setError("Voice recording is not available in this browser. Type the report instead.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+      chunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunksRef.current.push(event.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        const memo = new Blob(chunksRef.current, {
+          type: recorder.mimeType || "audio/webm",
+        });
+        void transcribeMemo(memo);
+      };
+      recorder.start();
+      setRecording(true);
+      setStatus(`Recording in ${language}.`);
+    } catch {
+      setError("Microphone permission was not granted. Type the report instead.");
+    }
+  }
+
+  function stopRecording() {
+    if (!recorderRef.current || recorderRef.current.state === "inactive") return;
+    recorderRef.current.stop();
+    setRecording(false);
+    setStatus("Transcribing voice memo...");
+  }
+
+  async function transcribeMemo(memo: Blob) {
+    if (!memo.size) {
+      setError("No audio was recorded. Please try again or type the report.");
+      return;
+    }
+    setTranscribing(true);
+    setError("");
+    try {
+      const transcript = await transcribeIncidentAudio({audio: memo, language});
+      setStatement(transcript.transcript);
+      const confidence = transcript.confidence
+        ? ` Confidence ${Math.round(transcript.confidence * 100)}%.`
+        : "";
+      setStatus(`Voice memo transcribed.${confidence} Review it before creating the draft.`);
+    } catch (caught) {
+      setError(
+        caught instanceof SafePointApiError
+          ? caught.message
+          : "The voice memo could not be transcribed. Type the report instead.",
+      );
+    } finally {
+      setTranscribing(false);
     }
   }
 
@@ -209,6 +284,20 @@ export function IncidentReportForm({
                 placeholder="Describe what you saw or what happened."
               />
             </label>
+            <div className="voice-memo-panel">
+              <div>
+                <strong>Voice memo</strong>
+                <p>Record in {language}, then review the transcript before drafting.</p>
+              </div>
+              <button
+                className="button secondary"
+                type="button"
+                disabled={transcribing}
+                onClick={recording ? stopRecording : startRecording}
+              >
+                {recording ? "Stop recording" : transcribing ? "Transcribing..." : "Record voice"}
+              </button>
+            </div>
             <label>
               What was done immediately?
               <textarea
@@ -223,6 +312,7 @@ export function IncidentReportForm({
               submission and SafePoint does not automatically save or send it.
             </p>
             {error && <p className="error-message">{error}</p>}
+            {status && <p role="status">{status}</p>}
             <button className="button primary full" disabled={loading}>
               {loading ? "Creating draft…" : "Create report draft"}
             </button>

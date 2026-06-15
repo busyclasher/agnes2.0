@@ -6,9 +6,7 @@ from pathlib import Path
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY_ROOT = BACKEND_ROOT.parent
-REPO_ROOT = (
-    REPOSITORY_ROOT if (REPOSITORY_ROOT / "data").exists() else BACKEND_ROOT
-)
+REPO_ROOT = REPOSITORY_ROOT if (REPOSITORY_ROOT / "data").exists() else BACKEND_ROOT
 
 
 def _as_bool(value: str | None, default: bool) -> bool:
@@ -26,11 +24,20 @@ class Settings:
     agnes_model: str = os.getenv("AGNES_MODEL", "agnes-2.0-flash")
     agnes_timeout_seconds: float = float(os.getenv("AGNES_TIMEOUT_SECONDS", "30"))
     elevenlabs_api_key: str | None = os.getenv("ELEVENLABS_API_KEY")
-    elevenlabs_voice_id: str | None = os.getenv("ELEVENLABS_VOICE_ID")
     elevenlabs_base_url: str = os.getenv(
         "ELEVENLABS_BASE_URL", "https://api.elevenlabs.io/v1"
+    ).rstrip("/")
+    elevenlabs_voice_id: str = os.getenv(
+        "ELEVENLABS_VOICE_ID", "JBFqnCBsd6RMkjVDRZzb"
     )
+    elevenlabs_bengali_voice_id: str | None = os.getenv("ELEVENLABS_BENGALI_VOICE_ID")
+    elevenlabs_tamil_voice_id: str | None = os.getenv("ELEVENLABS_TAMIL_VOICE_ID")
+    elevenlabs_hindi_voice_id: str | None = os.getenv("ELEVENLABS_HINDI_VOICE_ID")
     elevenlabs_model_id: str = os.getenv("ELEVENLABS_MODEL_ID", "eleven_v3")
+    elevenlabs_tts_model_id: str = os.getenv(
+        "ELEVENLABS_TTS_MODEL_ID", elevenlabs_model_id
+    )
+    elevenlabs_stt_model_id: str = os.getenv("ELEVENLABS_STT_MODEL_ID", "scribe_v2")
     elevenlabs_timeout_seconds: float = float(
         os.getenv("ELEVENLABS_TIMEOUT_SECONDS", "20")
     )
@@ -39,6 +46,7 @@ class Settings:
         os.getenv("STORE_SCANNED_IMAGES_BY_DEFAULT"), False
     )
     max_image_bytes: int = int(os.getenv("MAX_IMAGE_BYTES", str(10 * 1024 * 1024)))
+    max_audio_bytes: int = int(os.getenv("MAX_AUDIO_BYTES", str(25 * 1024 * 1024)))
     max_image_dimension: int = int(os.getenv("MAX_IMAGE_DIMENSION", "2400"))
     confidence_threshold: float = float(os.getenv("CONFIDENCE_THRESHOLD", "0.55"))
     frontend_origins: tuple[str, ...] = tuple(

@@ -27,7 +27,7 @@ type ScanState =
   | "recoverable-error"
   | "fatal-error";
 
-const LANGUAGES: SupportedLanguage[] = ["Bengali", "Tamil", "Hindi"];
+const DEMO_LANGUAGE: SupportedLanguage = "Tamil";
 const SAMPLES = [
   {file: "fall-hazard.png", label: "Open edge", detail: "Red danger"},
   {file: "chemical-warning.png", label: "Corrosive chemical", detail: "Red danger"},
@@ -35,7 +35,7 @@ const SAMPLES = [
 ];
 
 export function SafetyApp() {
-  const [language, setLanguage] = useState<SupportedLanguage>("Bengali");
+  const language = DEMO_LANGUAGE;
   const [scanState, setScanState] = useState<ScanState>("idle");
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState("");
@@ -153,19 +153,10 @@ export function SafetyApp() {
           scanState === "recoverable-error" ||
           scanState === "fatal-error") && (
           <section className="capture-card">
-            <label className="language-field">
+            <div className="language-field" aria-label="Worker language">
               <span>Your language</span>
-              <select
-                value={language}
-                onChange={(event) =>
-                  setLanguage(event.target.value as SupportedLanguage)
-                }
-              >
-                {LANGUAGES.map((item) => (
-                  <option key={item}>{item}</option>
-                ))}
-              </select>
-            </label>
+              <strong>Tamil</strong>
+            </div>
 
             {previewUrl ? (
               <div className="capture-preview">

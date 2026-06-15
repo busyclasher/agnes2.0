@@ -1,4 +1,5 @@
 import type {SupportedLanguage} from "@/lib/types";
+import {generateGuidanceSpeech} from "@/lib/api";
 
 const LANGUAGE_TAGS: Record<SupportedLanguage, string> = {
   Bengali: "bn-BD",
@@ -15,6 +16,30 @@ export type SpeechCallbacks = {
   onEnd?: () => void;
   onError?: () => void;
 };
+
+export async function playGuidanceAudio(
+  text: string,
+  language: SupportedLanguage,
+): Promise<SpeechResult> {
+  if (typeof window === "undefined" || typeof Audio === "undefined") {
+    return speakGuidance(text, language);
+  }
+
+  try {
+    const audio = await generateGuidanceSpeech({text, language});
+    const url = URL.createObjectURL(audio);
+    const player = new Audio(url);
+    player.onended = () => URL.revokeObjectURL(url);
+    player.onerror = () => URL.revokeObjectURL(url);
+    await player.play();
+    return {
+      started: true,
+      message: `Playing ${language} guidance with ElevenLabs.`,
+    };
+  } catch {
+    return speakGuidance(text, language);
+  }
+}
 
 export function speakGuidance(
   text: string,
